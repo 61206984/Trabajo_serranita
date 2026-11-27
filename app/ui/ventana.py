@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
 from app.services import auth
 from app.ui.pantallas.agregar_productos import PantallaAgregarProductos
 from app.ui.pantallas.buscar_cliente import PantallaBuscarCliente
+from app.ui.pantallas.detalle_pedido import PantallaDetallePedido
 from app.ui.pantallas.inicio import PantallaInicio
+from app.ui.pantallas.lista_pedidos import PantallaListaPedidos
 from app.ui.pantallas.pedido_registrado import PantallaPedidoRegistrado
 from app.ui.pantallas.registrar_cliente import PantallaRegistrarCliente
 from app.ui.pantallas.resumen_pedido import PantallaResumenPedido
@@ -162,6 +164,10 @@ class VentanaPrincipal(QWidget):
             return PantallaResumenPedido(self._ir_a)
         if nombre == "Pedido registrado":
             return PantallaPedidoRegistrado(self._ir_a)
+        if nombre == "Pedidos":
+            return PantallaListaPedidos(self._ir_a)
+        if nombre == "Detalle del pedido":
+            return PantallaDetallePedido(self._ir_a)
         marcador = QLabel(f"{nombre} · pendiente de copiar desde Figma")
         marcador.setContentsMargins(32, 32, 32, 32)
         return marcador

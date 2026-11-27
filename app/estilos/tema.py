@@ -52,6 +52,12 @@ def hoja_de_estilos() -> str:
         font-size: 36px; font-weight: 600;
     }}
     QLineEdit#cantidad {{ min-height: 30px; padding: 0 4px; }}
+    QLabel#pasoActivo {{ color: {t.PRIMARY}; font-size: 16px; }}
+    QLabel#pasoInactivo {{ color: {t.TEXT_SECONDARY}; font-size: 16px; }}
+    QComboBox {{
+        background: {t.SURFACE}; border: 1px solid {t.BORDER_INPUT}; border-radius: 5px;
+        padding: 0 12px; min-height: {t.CONTROL_HEIGHT - 2}px; color: {t.TEXT};
+    }}
     QPlainTextEdit {{
         background: {t.SURFACE}; border: 1px solid {t.BORDER_INPUT}; border-radius: 5px;
         padding: 8px 12px; color: {t.TEXT};
