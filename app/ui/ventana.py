@@ -16,12 +16,16 @@ from app.ui.pantallas.lista_pedidos import PantallaListaPedidos
 from app.ui.pantallas.pedido_registrado import PantallaPedidoRegistrado
 from app.ui.pantallas.registrar_cliente import PantallaRegistrarCliente
 from app.ui.pantallas.resumen_pedido import PantallaResumenPedido
+from app.ui.pantallas.clientes import PantallaClientes
+from app.ui.pantallas.productos import PantallaProductos
+from app.ui.pantallas.registrar_producto import PantallaRegistrarProducto
+from app.ui.pantallas.reporte_ventas import PantallaReporteVentas
 
 # Menú por rol (informe, RF-02). Una opción no permitida no se muestra.
 MENU_POR_ROL = {
     "Vendedor": ["Inicio", "Nuevo pedido", "Clientes", "Pedidos"],
     "Almacenero": ["Inicio", "Productos y stock"],
-    "Gerente": ["Inicio", "Pedidos", "Reporte de ventas"],
+    "Gerente": ["Inicio", "Pedidos", "Reporte de ventas", "Productos y stock"],
 }
 
 
@@ -168,6 +172,14 @@ class VentanaPrincipal(QWidget):
             return PantallaListaPedidos(self._ir_a)
         if nombre == "Detalle del pedido":
             return PantallaDetallePedido(self._ir_a)
+        if nombre == "Productos y stock":
+            return PantallaProductos(self._ir_a)
+        if nombre == "Registrar producto":
+            return PantallaRegistrarProducto(self._ir_a)
+        if nombre == "Reporte de ventas":
+            return PantallaReporteVentas(self._ir_a)
+        if nombre == "Clientes":
+            return PantallaClientes(self._ir_a)
         marcador = QLabel(f"{nombre} · pendiente de copiar desde Figma")
         marcador.setContentsMargins(32, 32, 32, 32)
         return marcador

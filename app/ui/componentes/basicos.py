@@ -1,7 +1,7 @@
 """Componentes reutilizables del Figma (Sistema de diseño). Cada pantalla los usa; ninguna pinta colores propios."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget,
+    QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget,
 )
 
 
@@ -110,6 +110,47 @@ def indicador_pasos(pasos: list[tuple[str, str]]) -> QWidget:
         h.addWidget(n)
         h.addWidget(t)
     return cont
+
+
+def etiquetado(etiqueta: str, widget: QWidget, ancho: int | None = None,
+               ayuda: str | None = None) -> QVBoxLayout:
+    """Campo de formulario: etiqueta arriba, entrada de 40 px y texto de ayuda opcional."""
+    v = QVBoxLayout()
+    v.setSpacing(6)
+    lbl = QLabel(etiqueta)
+    lbl.setObjectName("etiquetaCampo")
+    widget.setFixedHeight(40)
+    if ancho:
+        widget.setFixedWidth(ancho)
+    v.addWidget(lbl)
+    v.addWidget(widget)
+    if ayuda:
+        a = QLabel(ayuda)
+        a.setObjectName("ayuda")
+        v.addWidget(a)
+    return v
+
+
+def desplegable(opciones: list[str]) -> QComboBox:
+    c = QComboBox()
+    c.addItems(opciones)
+    return c
+
+
+def estado_stock(stock: int, bajo: int = 5) -> QLabel:
+    """Insignia de stock: Disponible, Stock bajo o Sin stock (siempre con texto)."""
+    if stock == 0:
+        clave, texto_ = "sin", "Sin stock"
+    elif stock <= bajo:
+        clave, texto_ = "bajo", "Stock bajo"
+    else:
+        clave, texto_ = "disponible", "Disponible"
+    etiqueta = QLabel(texto_)
+    etiqueta.setObjectName("pildora")
+    etiqueta.setProperty("estado", clave)
+    etiqueta.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    etiqueta.setFixedHeight(28)
+    return etiqueta
 
 
 def tarjeta() -> QFrame:

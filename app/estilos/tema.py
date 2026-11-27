@@ -30,6 +30,10 @@ def hoja_de_estilos() -> str:
     {_insignias()}
     QLabel#pildora[estado="activo"] {{ background: {t.BADGE_OK_BG}; color: {t.BADGE["Entregado"][0]}; border-radius: 14px; padding: 0 12px 0 10px; font-weight: 500; }}
     QLabel#pildora[estado="inactivo"] {{ background: {t.DANGER_BG}; color: {t.DANGER_TEXT}; border-radius: 14px; padding: 0 12px 0 10px; font-weight: 500; }}
+    QLabel#pildora[estado="disponible"] {{ background: {t.BADGE_OK_BG}; color: {t.BADGE["Entregado"][0]}; border-radius: 14px; padding: 0 12px 0 10px; font-weight: 500; }}
+    QLabel#pildora[estado="bajo"] {{ background: {t.BADGE["Pendiente"][1]}; color: {t.BADGE["Pendiente"][0]}; border-radius: 14px; padding: 0 12px 0 10px; font-weight: 500; }}
+    QLabel#pildora[estado="sin"] {{ background: {t.DANGER_BG}; color: {t.DANGER_TEXT}; border-radius: 14px; padding: 0 12px 0 10px; font-weight: 500; }}
+    QDialog {{ background: {t.SURFACE}; }}
 
     QFrame#tarjeta {{ background: {t.SURFACE}; border: 1px solid {t.BORDER}; border-radius: 8px; }}
     QFrame#panelMarca {{ background: {t.PRIMARY}; }}
