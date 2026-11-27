@@ -6,6 +6,8 @@ Medidas del Figma (ventana de 1280×800):
 - Campos: 333×39 en x=754 (y=320 y y=406), radio 5.5, borde #6B7280.
 - Botón Ingresar: 334×40 en (753, 466), radio 6, fondo #1F4E8C.
 """
+import logging
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget,
@@ -149,7 +151,8 @@ class PantallaLogin(QWidget):
             self.clave.setFocus()
             return
         except Exception:
-            # Error técnico: se registra en el log y el usuario ve un mensaje genérico.
+            # Error técnico: se registra con detalle en serranita.log y el usuario ve un mensaje genérico.
+            logging.getLogger(__name__).exception("Fallo al iniciar sesión")
             self._mostrar_error(False, "No se pudo conectar con la base de datos local.")
             return
         finally:
