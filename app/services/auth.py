@@ -9,10 +9,12 @@ class CredencialesInvalidas(Exception):
 
 
 class SesionActual:
-    def __init__(self, username: str, rol: str, id_vendedor: int | None):
+    def __init__(self, username: str, rol: str, id_vendedor: int | None, nombre: str):
         self.username = username
         self.rol = rol
         self.id_vendedor = id_vendedor
+        # Nombre a mostrar: el del vendedor, o el rol si el usuario no tiene ficha de vendedor.
+        self.nombre = nombre
 
 
 sesion: SesionActual | None = None
@@ -25,7 +27,8 @@ def iniciar_sesion(username: str, password: str) -> SesionActual:
         raise CredencialesInvalidas()
     if not bcrypt.checkpw(password.encode("utf-8"), datos.password_hash.encode("utf-8")):
         raise CredencialesInvalidas()
-    sesion = SesionActual(datos.username, datos.rol, datos.id_vendedor)
+    nombre = datos.nombre_completo or datos.rol
+    sesion = SesionActual(datos.username, datos.rol, datos.id_vendedor, nombre)
     return sesion
 
 

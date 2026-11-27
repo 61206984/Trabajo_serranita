@@ -12,6 +12,7 @@ class UsuarioDatos:
     rol: str
     id_vendedor: int | None
     activo: bool
+    nombre_completo: str | None
 
 
 def buscar_por_username(username: str) -> UsuarioDatos | None:
@@ -20,8 +21,11 @@ def buscar_por_username(username: str) -> UsuarioDatos | None:
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """SELECT u.id_usuario, u.username, u.password_hash, r.nombre AS rol,
-                      u.id_vendedor, u.activo
-                 FROM usuario u JOIN rol r ON r.id_rol = u.id_rol
+                      u.id_vendedor, u.activo,
+                      CONCAT(v.nombres, ' ', v.apellidos) AS nombre_completo
+                 FROM usuario u
+                 JOIN rol r ON r.id_rol = u.id_rol
+            LEFT JOIN vendedor v ON v.id_vendedor = u.id_vendedor
                 WHERE u.username = %s""",
             (username,),
         )
@@ -37,4 +41,5 @@ def buscar_por_username(username: str) -> UsuarioDatos | None:
         rol=fila["rol"],
         id_vendedor=fila["id_vendedor"],
         activo=bool(fila["activo"]),
+        nombre_completo=fila["nombre_completo"],
     )

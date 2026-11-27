@@ -1,9 +1,14 @@
-"""Ventana principal: barra superior, menú lateral según el rol (RF-02) y área de contenido."""
+"""Ventana principal (P02): barra superior, menú lateral según el rol (RF-02) y área de contenido.
+
+El inicio es el mismo para los tres roles. Cambia el menú lateral y el nombre de la persona.
+"""
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from app.services import auth
+from app.ui.pantallas.inicio import PantallaInicio
 
 # Menú por rol (informe, RF-02). Una opción no permitida no se muestra.
 MENU_POR_ROL = {
@@ -11,6 +16,15 @@ MENU_POR_ROL = {
     "Almacenero": ["Inicio", "Productos y stock"],
     "Gerente": ["Inicio", "Pedidos", "Reporte de ventas"],
 }
+
+
+def _iniciales(nombre: str) -> str:
+    partes = [p for p in nombre.split() if p]
+    if not partes:
+        return "?"
+    if len(partes) == 1:
+        return partes[0][:2].upper()
+    return (partes[0][0] + partes[1][0]).upper()
 
 
 class VentanaPrincipal(QWidget):
@@ -29,29 +43,62 @@ class VentanaPrincipal(QWidget):
         cuerpo.setSpacing(0)
         cuerpo.addWidget(self._menu_lateral())
         self.contenido = QStackedWidget()
+        self.contenido.setObjectName("contenido")
         cuerpo.addWidget(self.contenido, 1)
         raiz.addLayout(cuerpo, 1)
 
         self._pantallas = {}
         self._ir_a("Inicio")
 
+    # --- Barra superior (Figma: Barra superior, 64 px) ---
     def _barra_superior(self) -> QFrame:
         barra = QFrame()
         barra.setObjectName("barraSuperior")
         barra.setFixedHeight(64)
         h = QHBoxLayout(barra)
         h.setContentsMargins(24, 0, 24, 0)
-        titulo = QLabel("La Serranita")
-        titulo.setStyleSheet("font-size: 18px; font-weight: 600;")
-        h.addWidget(titulo)
+        h.setSpacing(16)
+
+        marca = QLabel("La Serranita")
+        marca.setObjectName("marca")
+        subtitulo = QLabel("Sistema de pedidos y ventas")
+        subtitulo.setObjectName("ayuda")
+        bloque = QVBoxLayout()
+        bloque.setSpacing(0)
+        bloque.addWidget(marca)
+        bloque.addWidget(subtitulo)
+        h.addLayout(bloque)
         h.addStretch(1)
-        h.addWidget(QLabel(f"{self.sesion.username} · {self.sesion.rol}"))
+
+        estado_bd = QLabel("Base de datos local")
+        estado_bd.setObjectName("pillaExito")
+        h.addWidget(estado_bd)
+
+        usuario = QHBoxLayout()
+        usuario.setSpacing(10)
+        avatar = QLabel(_iniciales(self.sesion.nombre))
+        avatar.setObjectName("avatar")
+        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        avatar.setFixedSize(36, 36)
+        datos = QVBoxLayout()
+        datos.setSpacing(0)
+        nombre = QLabel(self.sesion.nombre)
+        nombre.setStyleSheet("font-weight: 500;")
+        rol = QLabel(self.sesion.rol)
+        rol.setObjectName("ayuda")
+        datos.addWidget(nombre)
+        datos.addWidget(rol)
+        usuario.addWidget(avatar)
+        usuario.addLayout(datos)
+        h.addLayout(usuario)
+
         salir = QPushButton("Cerrar sesión")
-        salir.setProperty("variante", "primario")
+        salir.setProperty("variante", "secundario")
         salir.clicked.connect(self.window().cerrar_sesion)
         h.addWidget(salir)
         return barra
 
+    # --- Menú lateral (Figma: Menú lateral, 240 px, fondo primario) ---
     def _menu_lateral(self) -> QFrame:
         menu = QFrame()
         menu.setObjectName("menuLateral")
@@ -68,6 +115,20 @@ class VentanaPrincipal(QWidget):
             v.addWidget(b)
             self._botones_menu[opcion] = b
         v.addStretch(1)
+
+        pie = QFrame()
+        pie.setObjectName("estadoLocal")
+        pv = QVBoxLayout(pie)
+        pv.setContentsMargins(12, 12, 12, 12)
+        pv.setSpacing(4)
+        titulo = QLabel("Datos en este equipo")
+        titulo.setObjectName("estadoLocalTitulo")
+        texto = QLabel("Sin conexión a la nube. Respaldo diario a las 06:00.")
+        texto.setObjectName("estadoLocalTexto")
+        texto.setWordWrap(True)
+        pv.addWidget(titulo)
+        pv.addWidget(texto)
+        v.addWidget(pie)
         return menu
 
     def _ir_a(self, opcion: str) -> None:
@@ -76,7 +137,12 @@ class VentanaPrincipal(QWidget):
             b.style().unpolish(b)
             b.style().polish(b)
         if opcion not in self._pantallas:
-            # Pantallas de los demás módulos se agregan en pasos posteriores del plan.
-            self._pantallas[opcion] = QLabel(f"{opcion} · en construcción")
-            self.contenido.addWidget(self._pantallas[opcion])
+            if opcion == "Inicio":
+                pantalla = PantallaInicio(self.sesion.nombre)
+            else:
+                # Los demás módulos se agregan en los pasos siguientes del plan.
+                pantalla = QLabel(f"{opcion} · en construcción")
+                pantalla.setContentsMargins(32, 32, 32, 32)
+            self._pantallas[opcion] = pantalla
+            self.contenido.addWidget(pantalla)
         self.contenido.setCurrentWidget(self._pantallas[opcion])
