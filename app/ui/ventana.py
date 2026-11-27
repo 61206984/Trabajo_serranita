@@ -8,7 +8,9 @@ from PySide6.QtWidgets import (
 )
 
 from app.services import auth
+from app.ui.pantallas.buscar_cliente import PantallaBuscarCliente
 from app.ui.pantallas.inicio import PantallaInicio
+from app.ui.pantallas.registrar_cliente import PantallaRegistrarCliente
 
 # Menú por rol (informe, RF-02). Una opción no permitida no se muestra.
 MENU_POR_ROL = {
@@ -139,12 +141,18 @@ class VentanaPrincipal(QWidget):
             b.style().unpolish(b)
             b.style().polish(b)
         if opcion not in self._pantallas:
-            if opcion == "Inicio":
-                pantalla = PantallaInicio(self.sesion.nombre)
-            else:
-                # Los demás módulos se agregan en los pasos siguientes del plan.
-                pantalla = QLabel(f"{opcion} · en construcción")
-                pantalla.setContentsMargins(32, 32, 32, 32)
-            self._pantallas[opcion] = pantalla
-            self.contenido.addWidget(pantalla)
+            self._pantallas[opcion] = self._crear(opcion)
+            self.contenido.addWidget(self._pantallas[opcion])
         self.contenido.setCurrentWidget(self._pantallas[opcion])
+
+    def _crear(self, nombre: str) -> QWidget:
+        """Crea la pantalla. Las que aún no están diseñadas en código muestran un marcador."""
+        if nombre == "Inicio":
+            return PantallaInicio(self.sesion.nombre)
+        if nombre == "Nuevo pedido":
+            return PantallaBuscarCliente(self._ir_a)
+        if nombre == "Registrar cliente":
+            return PantallaRegistrarCliente(self._ir_a)
+        marcador = QLabel(f"{nombre} · pendiente de copiar desde Figma")
+        marcador.setContentsMargins(32, 32, 32, 32)
+        return marcador
