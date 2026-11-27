@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.services import auth
+from app.services.carrito import carrito
 from app.ui.pantallas.agregar_productos import PantallaAgregarProductos
 from app.ui.pantallas.buscar_cliente import PantallaBuscarCliente
 from app.ui.pantallas.detalle_pedido import PantallaDetallePedido
@@ -60,7 +61,6 @@ class VentanaPrincipal(QWidget):
         cuerpo.addWidget(self.contenido, 1)
         raiz.addLayout(cuerpo, 1)
 
-        self._pantallas = {}
         self._ir_a("Inicio")
 
     # --- Barra superior (Figma: Barra superior, 64 px) ---
@@ -144,17 +144,29 @@ class VentanaPrincipal(QWidget):
         v.addWidget(pie)
         return menu
 
-    def _ir_a(self, opcion: str) -> None:
+    # Sub-pantallas del flujo: qué opción del menú queda resaltada.
+    _PADRE = {
+        "Registrar cliente": "Nuevo pedido", "Agregar productos": "Nuevo pedido",
+        "Resumen del pedido": "Nuevo pedido", "Pedido registrado": "Nuevo pedido",
+        "Detalle del pedido": "Pedidos", "Registrar producto": "Productos y stock",
+    }
+
+    def _ir_a(self, opcion: str, **datos) -> None:
+        """Muestra una pantalla nueva con datos frescos (siempre se reconstruye al navegar)."""
+        activa = self._PADRE.get(opcion, opcion)
         for nombre, b in self._botones_menu.items():
-            b.setProperty("activo", nombre == opcion)
+            b.setProperty("activo", nombre == activa)
             b.style().unpolish(b)
             b.style().polish(b)
-        if opcion not in self._pantallas:
-            self._pantallas[opcion] = self._crear(opcion)
-            self.contenido.addWidget(self._pantallas[opcion])
-        self.contenido.setCurrentWidget(self._pantallas[opcion])
+        nueva = self._crear(opcion, **datos)
+        while self.contenido.count():
+            vieja = self.contenido.widget(0)
+            self.contenido.removeWidget(vieja)
+            vieja.deleteLater()
+        self.contenido.addWidget(nueva)
+        self.contenido.setCurrentWidget(nueva)
 
-    def _crear(self, nombre: str) -> QWidget:
+    def _crear(self, nombre: str, **datos) -> QWidget:
         """Crea la pantalla. Las que aún no están diseñadas en código muestran un marcador."""
         if nombre == "Inicio":
             return PantallaInicio(self.sesion.nombre)
@@ -162,18 +174,21 @@ class VentanaPrincipal(QWidget):
             return PantallaBuscarCliente(self._ir_a)
         if nombre == "Registrar cliente":
             return PantallaRegistrarCliente(self._ir_a)
+        # Sin cliente o sin productos no se puede avanzar: se vuelve al paso anterior.
+        if nombre in ("Agregar productos", "Resumen del pedido") and carrito.cliente is None:
+            return PantallaBuscarCliente(self._ir_a)
         if nombre == "Agregar productos":
             return PantallaAgregarProductos(self._ir_a)
         if nombre == "Resumen del pedido":
+            if not carrito.lineas:
+                return PantallaAgregarProductos(self._ir_a)
             return PantallaResumenPedido(self._ir_a)
         if nombre == "Pedido registrado":
-            return PantallaPedidoRegistrado(self._ir_a)
+            return PantallaPedidoRegistrado(self._ir_a, **datos)
         if nombre == "Pedidos":
             return PantallaListaPedidos(self._ir_a)
         if nombre == "Detalle del pedido":
-            return PantallaDetallePedido(self._ir_a)
-        if nombre == "Detalle del pedido Confirmado":
-            return PantallaDetallePedido(self._ir_a, estado="Confirmado")
+            return PantallaDetallePedido(self._ir_a, pedido_id=datos["pedido_id"])
         if nombre == "Productos y stock":
             return PantallaProductos(self._ir_a)
         if nombre == "Registrar producto":
@@ -182,6 +197,6 @@ class VentanaPrincipal(QWidget):
             return PantallaReporteVentas(self._ir_a)
         if nombre == "Clientes":
             return PantallaClientes(self._ir_a)
-        marcador = QLabel(f"{nombre} · pendiente de copiar desde Figma")
+        marcador = QLabel(f"{nombre} · pendiente")
         marcador.setContentsMargins(32, 32, 32, 32)
         return marcador

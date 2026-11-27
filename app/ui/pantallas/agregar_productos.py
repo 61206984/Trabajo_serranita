@@ -1,66 +1,77 @@
-"""P05 Agregar productos (Nuevo pedido, paso 2) y su variante con stock insuficiente (P05b).
-Medidas y textos del Figma (1280×800). Los productos son de ejemplo del Figma; se reemplazarán
-con la consulta a la base de datos. El aviso y el borde rojo salen de comparar cantidad y stock.
-"""
+"""P05 Agregar productos (Nuevo pedido, paso 2). Catálogo y stock desde la base de datos.
+RF-06, RF-09, RF-10: no deja agregar más de lo que hay en stock."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
 from app.estilos import tokens as t
+from app.repos import productos as repo_productos
+from app.services.carrito import Linea, carrito
 from app.ui.componentes import basicos as b
 from app.ui.componentes.tablas import celda, nueva_tabla, texto
 
 PASOS = [("Cliente", "hecho"), ("Productos", "actual"), ("Resumen", "pendiente"), ("Registrado", "pendiente")]
-CLIENTE_NOMBRE = "Minimarket El Mantaro S.A.C."
-CLIENTE_DATOS = "RUC 20601234567 · 964 112 233"
-STOCK_BAJO = 5
-
-# (código, producto, precio, stock, cantidad inicial, ya está en el pedido)
-CATALOGO = [
-    ("QF-500", "Queso fresco 500 g", 14.50, 120, 12, True),
-    ("YG-1L", "Yogur frutado 1 litro", 9.80, 3, 3, True),
-    ("MT-200", "Mantequilla 200 g", 8.50, 64, 1, False),
-    ("MJ-1K", "Manjar blanco 1 kg", 18.00, 35, 1, False),
-    ("LE-1L", "Leche entera 1 litro", 4.80, 210, 24, True),
-    ("HL-1L", "Helado de vainilla 1 litro", 16.00, 48, 1, False),
-]
 
 
 class PantallaAgregarProductos(QWidget):
-    def __init__(self, ir_a, stock_insuficiente: bool = False, parent=None):
+    def __init__(self, ir_a, parent=None):
         super().__init__(parent)
         self.ir_a = ir_a
-        self.cantidades = {codigo: cant for codigo, _, _, _, cant, _ in CATALOGO}
-        if stock_insuficiente:
-            self.cantidades["YG-1L"] = 5  # P05b: el vendedor pide más de lo que hay
-
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
         raiz.addWidget(b.encabezado(
             "Agregar productos", "Seleccione los productos y las cantidades del pedido", pasos=PASOS))
 
+        self.buscar = QLineEdit()
+        self.buscar.setPlaceholderText("Buscar por código o nombre")
+        self.buscar.setFixedHeight(40)
+        self.buscar.returnPressed.connect(self._refrescar)
+
         cuerpo = QHBoxLayout()
         cuerpo.setSpacing(24)
-        izquierda = QVBoxLayout()
-        izquierda.setSpacing(16)
-        izquierda.addWidget(self._cliente())
-        izquierda.addWidget(self._aviso())
-        izquierda.addWidget(self._tabla())
-        izquierda.addStretch(1)
-        cuerpo.addLayout(izquierda, 1)
-        cuerpo.addWidget(self._pedido_actual(), 0, Qt.AlignmentFlag.AlignTop)
+        self.izquierda = QVBoxLayout()
+        self.izquierda.setSpacing(16)
+        self.izquierda.addWidget(self._cliente())
+        self.izquierda.addWidget(self.buscar)
+        self.zona_aviso = QVBoxLayout()
+        self.izquierda.addLayout(self.zona_aviso)
+        self.zona_tabla = QVBoxLayout()
+        self.izquierda.addLayout(self.zona_tabla)
+        self.izquierda.addStretch(1)
+        cuerpo.addLayout(self.izquierda, 1)
+        self.lateral = QVBoxLayout()
+        cuerpo.addLayout(self.lateral)
         raiz.addLayout(cuerpo, 1)
+        self._refrescar()
+
+    # --- Secciones ---
+    def _refrescar(self) -> None:
+        self._limpiar(self.zona_tabla)
+        self._limpiar(self.zona_aviso)
+        self._limpiar(self.lateral)
+        self.zona_tabla.addWidget(self._tabla(self.buscar.text().strip()))
+        self.zona_aviso.addWidget(self._aviso())
+        self.lateral.addWidget(self._pedido_actual(), 0, Qt.AlignmentFlag.AlignTop)
+
+    def _limpiar(self, layout) -> None:
+        while layout.count():
+            it = layout.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+            elif it.layout():
+                self._limpiar(it.layout())
 
     def _cliente(self) -> QFrame:
+        c = carrito.cliente
         tarjeta = b.tarjeta()
         tarjeta.setFixedHeight(100)
         h = QHBoxLayout(tarjeta)
         h.setContentsMargins(16, 16, 16, 16)
         datos = QVBoxLayout()
         datos.setSpacing(2)
-        nombre = QLabel(CLIENTE_NOMBRE)
+        nombre = QLabel(c.nombre)
         nombre.setStyleSheet("font-size: 18px; font-weight: 600;")
-        detalle = QLabel(CLIENTE_DATOS)
+        detalle = QLabel(f"{c.documento}" + (f" · {c.telefono}" if c.telefono else ""))
         detalle.setObjectName("secundario")
         datos.addWidget(nombre)
         datos.addWidget(detalle)
@@ -71,37 +82,66 @@ class PantallaAgregarProductos(QWidget):
         h.addWidget(cambiar)
         return tarjeta
 
+    def _excedidos(self):
+        return [l for l in carrito.lineas.values() if l.cantidad > l.stock]
+
     def _aviso(self) -> QFrame:
-        for codigo, nombre, _, stock, _, _ in CATALOGO:
-            if self.cantidades[codigo] > stock:
-                return b.aviso(
-                    f"Stock insuficiente: quedan {stock} unidades de {nombre}. Reduzca la cantidad.", "error")
+        excedidos = self._excedidos()
+        if excedidos:
+            l = excedidos[0]
+            return b.aviso(f"Stock insuficiente: quedan {int(l.stock)} unidades de {l.nombre}. "
+                           "Reduzca la cantidad.", "error")
         return b.aviso("El stock puede cambiar hasta que el pedido se confirme.", "advertencia")
 
-    def _tabla(self):
-        tabla = nueva_tabla(["Código", "Producto", "Precio", "Stock", "Cant.", ""], len(CATALOGO))
-        for fila, (codigo, nombre, precio, stock, _, en_pedido) in enumerate(CATALOGO):
-            cant = self.cantidades[codigo]
-            tabla.setItem(fila, 0, texto(codigo))
-            tabla.setItem(fila, 1, texto(nombre))
-            tabla.setItem(fila, 2, texto(f"S/ {precio:.2f}", derecha=True))
-            color = t.BADGE["Pendiente"][0] if stock <= STOCK_BAJO else None
-            tabla.setItem(fila, 3, texto(str(stock), derecha=True, color=color))
-            tabla.setCellWidget(fila, 4, celda(self._cantidad(cant, cant > stock), derecha=True))
+    def _tabla(self, filtro: str):
+        filas = repo_productos.listar(texto=filtro)
+        tabla = nueva_tabla(["Código", "Producto", "Precio", "Stock", "Cant.", ""], max(len(filas), 1))
+        for fila, p in enumerate(filas):
+            stock = float(p["stock"])
+            en_pedido = p["id_producto"] in carrito.lineas
+            tabla.setItem(fila, 0, texto(p["codigo"]))
+            tabla.setItem(fila, 1, texto(p["nombre"]))
+            tabla.setItem(fila, 2, texto(f"S/ {float(p['precio_unit']):.2f}", derecha=True))
+            color = t.BADGE["Pendiente"][0] if stock <= repo_productos.UMBRAL_STOCK_BAJO else None
+            tabla.setItem(fila, 3, texto(f"{stock:g}", derecha=True, color=color))
             if en_pedido:
-                accion = b.boton("Agregado", "secundario", 106, deshabilitado=True)
+                cant = carrito.lineas[p["id_producto"]].cantidad
+                campo = QLineEdit(f"{cant:g}")
+                campo.setObjectName("cantidad")
+                campo.setFixedSize(64, 32)
+                campo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                campo.setProperty("error", cant > stock)
+                campo.editingFinished.connect(lambda p=p, c=campo: self._cambiar_cantidad(p, c))
+                tabla.setCellWidget(fila, 4, celda(campo, derecha=True))
+                accion = b.boton("Quitar", "secundario", 106)
+                accion.clicked.connect(lambda _=False, p=p: self._quitar(p))
             else:
-                accion = b.boton("Agregar", "secundario", 106)
+                tabla.setCellWidget(fila, 4, celda(QLabel(""), derecha=True))
+                accion = b.boton("Agregar", "secundario", 106, deshabilitado=stock <= 0)
+                accion.clicked.connect(lambda _=False, p=p: self._agregar(p))
             tabla.setCellWidget(fila, 5, celda(accion, derecha=True))
         return tabla
 
-    def _cantidad(self, valor: int, error: bool) -> QLineEdit:
-        campo = QLineEdit(str(valor))
-        campo.setObjectName("cantidad")
-        campo.setFixedSize(64, 32)
-        campo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        campo.setProperty("error", error)
-        return campo
+    def _agregar(self, p) -> None:
+        carrito.lineas[p["id_producto"]] = Linea(
+            id_producto=p["id_producto"], codigo=p["codigo"], nombre=p["nombre"],
+            precio=float(p["precio_unit"]), stock=float(p["stock"]), cantidad=1)
+        self._refrescar()
+
+    def _quitar(self, p) -> None:
+        carrito.lineas.pop(p["id_producto"], None)
+        self._refrescar()
+
+    def _cambiar_cantidad(self, p, campo: QLineEdit) -> None:
+        try:
+            cant = float(campo.text().replace(",", "."))
+        except ValueError:
+            cant = 0
+        if cant <= 0:
+            carrito.lineas.pop(p["id_producto"], None)
+        elif p["id_producto"] in carrito.lineas:
+            carrito.lineas[p["id_producto"]].cantidad = cant
+        self._refrescar()
 
     def _pedido_actual(self) -> QFrame:
         tarjeta = b.tarjeta()
@@ -109,40 +149,32 @@ class PantallaAgregarProductos(QWidget):
         v = QVBoxLayout(tarjeta)
         v.setContentsMargins(20, 20, 20, 20)
         v.setSpacing(16)
-
-        lineas = [(c, n, p, self.cantidades[c]) for c, n, p, _, _, en in CATALOGO if en]
         cabecera = QHBoxLayout()
         titulo = QLabel("Pedido actual")
         titulo.setStyleSheet("font-size: 18px; font-weight: 600;")
-        conteo = QLabel(f"{len(lineas)} líneas")
+        conteo = QLabel(f"{len(carrito.lineas)} líneas")
         conteo.setObjectName("secundario")
         cabecera.addWidget(titulo)
         cabecera.addStretch(1)
         cabecera.addWidget(conteo)
         v.addLayout(cabecera)
-
-        total = 0.0
-        for _, nombre, precio, cant in lineas:
-            subtotal = round(precio * cant, 2)
-            total += subtotal
-            v.addLayout(self._linea(nombre, f"{cant} × S/ {precio:.2f}", subtotal))
-
+        for l in carrito.lineas.values():
+            v.addLayout(self._linea(l.nombre, f"{l.cantidad:g} × S/ {l.precio:.2f}", l.subtotal))
         separador = QFrame()
         separador.setFixedHeight(1)
         separador.setStyleSheet(f"background: {t.BORDER};")
         v.addWidget(separador)
-
         fila_total = QHBoxLayout()
         etiqueta = QLabel("Total")
         etiqueta.setStyleSheet("font-size: 18px; font-weight: 600;")
-        valor = QLabel(f"S/ {total:.2f}")
+        valor = QLabel(f"S/ {carrito.total():.2f}")
         valor.setStyleSheet("font-size: 18px; font-weight: 600;")
         fila_total.addWidget(etiqueta)
         fila_total.addStretch(1)
         fila_total.addWidget(valor)
         v.addLayout(fila_total)
-
         continuar = b.boton("Continuar", "primario")
+        continuar.setEnabled(bool(carrito.lineas) and not self._excedidos())
         continuar.clicked.connect(lambda: self.ir_a("Resumen del pedido"))
         v.addWidget(continuar)
         return tarjeta

@@ -1,22 +1,11 @@
-"""P08 Lista de pedidos (vendedor). Medidas y textos del Figma (1280×800).
-Los pedidos son de ejemplo del Figma; se reemplazarán con la consulta a la base de datos.
-"""
+"""P08 Lista de pedidos (RF-14). Filtra por estado, cliente y fechas en la base de datos."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
+from app.repos import pedidos as repo_pedidos
+from app.services.fechas import parse_fecha
 from app.ui.componentes import basicos as b
 from app.ui.componentes.tablas import celda, nueva_tabla, texto
-
-# (número, fecha, cliente, vendedor, estado, total)
-PEDIDOS = [
-    ("0042", "27/11/2026", "Minimarket El Mantaro S.A.C.", "Luis Cárdenas", "Pendiente", 318.60),
-    ("0041", "27/11/2026", "Bodega Doña Rosa", "Luis Cárdenas", "Confirmado", 96.40),
-    ("0040", "26/11/2026", "Restaurante Sabor Huanca E.I.R.L.", "Ana Quispe", "Entregado", 742.00),
-    ("0039", "26/11/2026", "Juan Pérez Quispe", "Ana Quispe", "Entregado", 58.00),
-    ("0038", "25/11/2026", "Minimarket El Mantaro S.A.C.", "Luis Cárdenas", "Entregado", 410.30),
-    ("0037", "25/11/2026", "Panadería San José E.I.R.L.", "Ana Quispe", "Cancelado", 135.00),
-    ("0036", "24/11/2026", "Bodega Doña Rosa", "Luis Cárdenas", "Entregado", 87.20),
-]
 
 
 class PantallaListaPedidos(QWidget):
@@ -31,9 +20,13 @@ class PantallaListaPedidos(QWidget):
         nuevo.clicked.connect(lambda: self.ir_a("Nuevo pedido"))
         raiz.addWidget(b.encabezado("Pedidos", "Consulte y filtre los pedidos registrados", accion=nuevo))
         raiz.addWidget(self._filtros())
-        raiz.addWidget(self._tabla())
-        raiz.addLayout(self._pie())
+        self.zona_tabla = QVBoxLayout()
+        raiz.addLayout(self.zona_tabla)
+        self.info = QLabel("")
+        self.info.setObjectName("secundario")
+        raiz.addWidget(self.info)
         raiz.addStretch(1)
+        self.filtrar()
 
     def _campo(self, etiqueta: str, entrada, ancho: int | None = None) -> QVBoxLayout:
         v = QVBoxLayout()
@@ -52,40 +45,40 @@ class PantallaListaPedidos(QWidget):
         h = QHBoxLayout(tarjeta)
         h.setContentsMargins(16, 16, 16, 16)
         h.setSpacing(16)
-        estado = QComboBox()
-        estado.addItems(["Todos", "Pendiente", "Confirmado", "Entregado", "Cancelado"])
-        cliente = QLineEdit()
-        cliente.setPlaceholderText("Buscar por nombre o documento")
-        desde = QLineEdit("01/11/2026")
-        hasta = QLineEdit("27/11/2026")
-        h.addLayout(self._campo("Estado", estado, 180))
-        h.addLayout(self._campo("Cliente", cliente), 1)
-        h.addLayout(self._campo("Desde", desde, 150))
-        h.addLayout(self._campo("Hasta", hasta, 150))
-        h.addWidget(b.boton("Filtrar", "primario"), 0, Qt.AlignmentFlag.AlignBottom)
+        self.estado = QComboBox()
+        self.estado.addItems(["Todos", "Pendiente", "Confirmado", "Entregado", "Cancelado"])
+        self.cliente = QLineEdit()
+        self.cliente.setPlaceholderText("Buscar por nombre o documento")
+        self.desde = QLineEdit("")
+        self.desde.setPlaceholderText("dd/mm/aaaa")
+        self.hasta = QLineEdit("")
+        self.hasta.setPlaceholderText("dd/mm/aaaa")
+        h.addLayout(self._campo("Estado", self.estado, 180))
+        h.addLayout(self._campo("Cliente", self.cliente), 1)
+        h.addLayout(self._campo("Desde", self.desde, 150))
+        h.addLayout(self._campo("Hasta", self.hasta, 150))
+        filtrar = b.boton("Filtrar", "primario")
+        filtrar.clicked.connect(self.filtrar)
+        h.addWidget(filtrar, 0, Qt.AlignmentFlag.AlignBottom)
         return tarjeta
 
-    def _tabla(self):
-        tabla = nueva_tabla(["N.º", "Fecha", "Cliente", "Vendedor", "Estado", "Total"], len(PEDIDOS))
-        for fila, (numero, fecha, cliente, vendedor, estado, total) in enumerate(PEDIDOS):
-            enlace = b.boton(numero, "enlace")
-            enlace.clicked.connect(lambda _=False: self.ir_a("Detalle del pedido"))
+    def filtrar(self) -> None:
+        desde = parse_fecha(self.desde.text())
+        hasta = parse_fecha(self.hasta.text())
+        filas = repo_pedidos.listar(self.estado.currentText(), self.cliente.text(), desde, hasta)
+        while self.zona_tabla.count():
+            it = self.zona_tabla.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+        tabla = nueva_tabla(["N.º", "Fecha", "Cliente", "Vendedor", "Estado", "Total"], max(len(filas), 1))
+        for fila, p in enumerate(filas):
+            enlace = b.boton(f"{p['id_pedido']:04d}", "enlace")
+            enlace.clicked.connect(lambda _=False, i=p["id_pedido"]: self.ir_a("Detalle del pedido", pedido_id=i))
             tabla.setCellWidget(fila, 0, celda(enlace))
-            tabla.setItem(fila, 1, texto(fecha))
-            tabla.setItem(fila, 2, texto(cliente))
-            tabla.setItem(fila, 3, texto(vendedor))
-            tabla.setCellWidget(fila, 4, celda(b.insignia(estado)))
-            tabla.setItem(fila, 5, texto(f"S/ {total:.2f}", derecha=True))
-        return tabla
-
-    def _pie(self) -> QHBoxLayout:
-        h = QHBoxLayout()
-        h.setSpacing(8)
-        info = QLabel("Mostrando 1–7 de 64 pedidos")
-        info.setObjectName("secundario")
-        h.addWidget(info)
-        h.addStretch(1)
-        h.addWidget(b.boton("Anterior", "secundario", deshabilitado=True))
-        siguiente = b.boton("Siguiente", "secundario")
-        h.addWidget(siguiente)
-        return h
+            tabla.setItem(fila, 1, texto(p["fecha_pedido"].strftime("%d/%m/%Y")))
+            tabla.setItem(fila, 2, texto(p["cliente"]))
+            tabla.setItem(fila, 3, texto(p["vendedor"]))
+            tabla.setCellWidget(fila, 4, celda(b.insignia(p["estado"])))
+            tabla.setItem(fila, 5, texto(f"S/ {float(p['total']):.2f}", derecha=True))
+        self.zona_tabla.addWidget(tabla)
+        self.info.setText(f"{len(filas)} pedidos" if filas else "No hay pedidos que coincidan con los filtros.")

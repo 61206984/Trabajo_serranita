@@ -1,25 +1,16 @@
-"""P03 Buscar cliente (Nuevo pedido, paso 1). Medidas y textos del Figma (1280×800).
-
-Los clientes recientes son de ejemplo del Figma; se reemplazarán con la consulta a la base de datos
-cuando exista el módulo de clientes. Los inactivos no se pueden seleccionar (RF-05, RN-07).
-"""
+"""P03 Buscar cliente (Nuevo pedido, paso 1). Datos de la base de datos (RF-05).
+Los inactivos se muestran pero no se pueden seleccionar (RN-07, RN-08)."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from app.estilos import tokens as t
+from app.repos import clientes as repo_clientes
+from app.services.carrito import Cliente, carrito
 from app.ui.componentes import basicos as b
 
 PASOS = [("Cliente", "actual"), ("Productos", "pendiente"), ("Resumen", "pendiente"), ("Registrado", "pendiente")]
-
-CLIENTES_RECIENTES = [
-    ("RUC 20601234567", "Minimarket El Mantaro S.A.C.", "964 112 233", True),
-    ("DNI 41256789", "Bodega Doña Rosa", "987 654 321", True),
-    ("RUC 20487654321", "Restaurante Sabor Huanca E.I.R.L.", "064 231 456", True),
-    ("DNI 20458963", "Juan Pérez Quispe", "954 321 876", True),
-    ("RUC 20512345678", "Panadería San José E.I.R.L.", "064 247 810", False),
-]
 
 
 class PantallaBuscarCliente(QWidget):
@@ -36,7 +27,6 @@ class PantallaBuscarCliente(QWidget):
             "Nuevo pedido", "Busque al cliente por número de documento o nombre",
             pasos=PASOS, accion=None))
 
-        # Barra de búsqueda (tarjeta de 16 px de padding)
         barra = b.tarjeta()
         bl = QHBoxLayout(barra)
         bl.setContentsMargins(16, 16, 16, 16)
@@ -44,29 +34,41 @@ class PantallaBuscarCliente(QWidget):
         self.buscar = QLineEdit()
         self.buscar.setPlaceholderText("Buscar por documento o nombre")
         self.buscar.setFixedHeight(40)
+        self.buscar.returnPressed.connect(self._cargar)
         bl.addWidget(self.buscar, 1)
-        bl.addWidget(b.boton("Buscar", "primario", 88))
+        buscar = b.boton("Buscar", "primario", 88)
+        buscar.clicked.connect(self._cargar)
+        bl.addWidget(buscar)
         bl.addWidget(nuevo)
         raiz.addWidget(barra)
 
-        raiz.addWidget(self._sub("Clientes recientes"))
-        raiz.addWidget(self._tabla())
-        raiz.addWidget(self._ayuda("Los clientes inactivos no se pueden asignar a un pedido nuevo."))
+        self.titulo_tabla = QLabel("Clientes recientes")
+        self.titulo_tabla.setStyleSheet("font-size: 18px; font-weight: 600;")
+        raiz.addWidget(self.titulo_tabla)
+        self.tabla = QTableWidget(0, 5)
+        raiz.addWidget(self.tabla)
+        self.vacio = QLabel("")
+        self.vacio.setObjectName("ayuda")
+        raiz.addWidget(self.vacio)
+        ayuda = QLabel("Los clientes inactivos no se pueden asignar a un pedido nuevo.")
+        ayuda.setObjectName("ayuda")
+        raiz.addWidget(ayuda)
         raiz.addStretch(1)
+        self._cargar()
 
-    def _sub(self, texto: str) -> QLabel:
-        l = QLabel(texto)
-        l.setStyleSheet("font-size: 18px; font-weight: 600;")
-        return l
+    def _cargar(self) -> None:
+        texto = self.buscar.text().strip()
+        self.titulo_tabla.setText("Resultados" if texto else "Clientes recientes")
+        filas = repo_clientes.buscar(texto, limite=20)
+        self._llenar(filas)
+        self.vacio.setText("No hay clientes que coincidan con la búsqueda." if not filas else "")
 
-    def _ayuda(self, texto: str) -> QLabel:
-        l = QLabel(texto)
-        l.setObjectName("ayuda")
-        return l
-
-    def _tabla(self) -> QTableWidget:
+    def _llenar(self, filas) -> None:
         columnas = ["Documento", "Cliente", "Teléfono", "Estado", ""]
-        tabla = QTableWidget(len(CLIENTES_RECIENTES), len(columnas))
+        tabla = self.tabla
+        tabla.clear()
+        tabla.setRowCount(len(filas))
+        tabla.setColumnCount(len(columnas))
         tabla.setObjectName("tablaDatos")
         tabla.setHorizontalHeaderLabels(columnas)
         tabla.verticalHeader().setVisible(False)
@@ -75,23 +77,28 @@ class PantallaBuscarCliente(QWidget):
         tabla.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         tabla.verticalHeader().setDefaultSectionSize(t.ROW_HEIGHT)
         tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        tabla.setFixedHeight(40 + t.ROW_HEIGHT * len(CLIENTES_RECIENTES) + 2)
-
-        for fila, (doc, nombre, tel, activo) in enumerate(CLIENTES_RECIENTES):
-            tabla.setItem(fila, 0, QTableWidgetItem(doc))
-            tabla.setItem(fila, 1, QTableWidgetItem(nombre))
-            tabla.setItem(fila, 2, QTableWidgetItem(tel))
-            tabla.setCellWidget(fila, 3, self._celda(b.pildora_activo(activo)))
-            if activo:
+        tabla.setFixedHeight(40 + t.ROW_HEIGHT * max(len(filas), 1) + 2)
+        for fila, c in enumerate(filas):
+            tabla.setItem(fila, 0, QTableWidgetItem(f"{c['tipo_doc']} {c['nro_doc']}"))
+            tabla.setItem(fila, 1, QTableWidgetItem(c["nombre"]))
+            tabla.setItem(fila, 2, QTableWidgetItem(c["telefono"] or "—"))
+            tabla.setCellWidget(fila, 3, self._celda(b.pildora_activo(bool(c["activo"]))))
+            if c["activo"]:
                 accion = b.boton("Seleccionar", "secundario", 123)
-                accion.clicked.connect(lambda _=False: self.ir_a("Agregar productos"))
+                accion.clicked.connect(lambda _=False, c=c: self._seleccionar(c))
             else:
                 accion = b.boton("No disponible", "secundario", 133, deshabilitado=True)
             tabla.setCellWidget(fila, 4, self._celda(accion, alinear_derecha=True))
-        return tabla
+
+    def _seleccionar(self, c: dict) -> None:
+        carrito.seleccionar_cliente(Cliente(
+            id_cliente=c["id_cliente"], tipo_doc=c["tipo_doc"], nro_doc=c["nro_doc"],
+            nombre=c["nombre"], telefono=c["telefono"], direccion=c["direccion"]))
+        self.ir_a("Agregar productos")
 
     def _celda(self, widget: QWidget, alinear_derecha: bool = False) -> QWidget:
-        cont = QWidget()
+        from PySide6.QtWidgets import QWidget as W
+        cont = W()
         h = QHBoxLayout(cont)
         h.setContentsMargins(8, 0, 8, 0)
         h.addWidget(widget, 0, Qt.AlignmentFlag.AlignRight if alinear_derecha else Qt.AlignmentFlag.AlignLeft)

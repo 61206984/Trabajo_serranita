@@ -1,53 +1,45 @@
-"""P14 Reporte de ventas (Gerente). Medidas y textos del Figma (1280×800). Los datos son de ejemplo."""
+"""P14 Reporte de ventas (Gerente, RF-15). Totales desde la base de datos; excluye cancelados."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+from datetime import date
 
+from app.repos import reportes
+from app.services.fechas import parse_fecha
 from app.ui.componentes import basicos as b
 from app.ui.componentes.tablas import nueva_tabla, texto
-
-# (código, producto, unidades, ventas)
-VENTAS = [
-    ("LE-1L", "Leche entera 1 litro", 300, 1440.00),
-    ("QF-500", "Queso fresco 500 g", 96, 1392.00),
-    ("HL-1L", "Helado de vainilla 1 litro", 36, 576.00),
-    ("YG-1L", "Yogur frutado 1 litro", 54, 529.20),
-    ("MJ-1K", "Manjar blanco 1 kg", 22, 396.00),
-]
-PEDIDOS_CONSIDERADOS = 41
 
 
 class PantallaReporteVentas(QWidget):
     def __init__(self, ir_a, parent=None):
         super().__init__(parent)
         self.ir_a = ir_a
-        unidades = sum(v[2] for v in VENTAS)
-        ventas = round(sum(v[3] for v in VENTAS), 2)
-
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
         raiz.addWidget(b.encabezado(
-            "Reporte de ventas", "Ventas por rango de fechas, producto, cliente y vendedor"))
+            "Reporte de ventas", "Ventas por rango de fechas (pedidos no cancelados)"))
         raiz.addWidget(self._filtros())
-        raiz.addLayout(self._indicadores(ventas, unidades))
-        raiz.addWidget(self._tabla(ventas, unidades))
+        self.zona = QVBoxLayout()
+        raiz.addLayout(self.zona, 1)
         ayuda = QLabel("El total del reporte coincide con la suma de los pedidos considerados.")
         ayuda.setObjectName("ayuda")
         raiz.addWidget(ayuda)
-        raiz.addStretch(1)
+        self.generar()
 
     def _filtros(self) -> QFrame:
         tarjeta = b.tarjeta()
         h = QHBoxLayout(tarjeta)
         h.setContentsMargins(16, 16, 16, 16)
         h.setSpacing(16)
-        h.addLayout(b.etiquetado("Desde", QLineEdit("01/11/2026")), 0)
-        h.addLayout(b.etiquetado("Hasta", QLineEdit("27/11/2026")), 0)
-        h.addLayout(b.etiquetado("Producto", b.desplegable(["Todos"]), 160))
-        h.addLayout(b.etiquetado("Cliente", b.desplegable(["Todos"]), 160))
-        h.addLayout(b.etiquetado("Vendedor", b.desplegable(["Todos"]), 140))
+        hoy = date.today().strftime("%d/%m/%Y")
+        self.desde = QLineEdit(date.today().replace(day=1).strftime("%d/%m/%Y"))
+        self.hasta = QLineEdit(hoy)
+        h.addLayout(b.etiquetado("Desde (dd/mm/aaaa)", self.desde, 180), 0)
+        h.addLayout(b.etiquetado("Hasta (dd/mm/aaaa)", self.hasta, 180), 0)
         h.addStretch(1)
-        h.addWidget(b.boton("Generar reporte"), 0, Qt.AlignmentFlag.AlignBottom)
+        generar = b.boton("Generar reporte")
+        generar.clicked.connect(self.generar)
+        h.addWidget(generar, 0, Qt.AlignmentFlag.AlignBottom)
         return tarjeta
 
     def _kpi(self, titulo: str, valor: str) -> QFrame:
@@ -63,23 +55,41 @@ class PantallaReporteVentas(QWidget):
         v.addWidget(n)
         return tarjeta
 
-    def _indicadores(self, ventas: float, unidades: int) -> QHBoxLayout:
-        h = QHBoxLayout()
-        h.setSpacing(16)
-        h.addWidget(self._kpi("Total vendido", f"S/ {ventas:,.2f}"), 1)
-        h.addWidget(self._kpi("Pedidos considerados", str(PEDIDOS_CONSIDERADOS)), 1)
-        h.addWidget(self._kpi("Unidades vendidas", str(unidades)), 1)
-        return h
+    def generar(self) -> None:
+        while self.zona.count():
+            it = self.zona.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+            elif it.layout():
+                while it.layout().count():
+                    sub = it.layout().takeAt(0)
+                    if sub.widget():
+                        sub.widget().deleteLater()
+        desde, hasta = parse_fecha(self.desde.text()), parse_fecha(self.hasta.text())
+        if desde is None or hasta is None or desde > hasta:
+            self.zona.addWidget(b.aviso("Ingrese un rango válido en formato dd/mm/aaaa.", "error"))
+            return
+        resumen = reportes.resumen(desde, hasta)
+        filas = reportes.ventas_por_producto(desde, hasta)
+        total = float(resumen["total"])
+        unidades = sum(float(f["unidades"]) for f in filas)
 
-    def _tabla(self, ventas: float, unidades: int):
-        tabla = nueva_tabla(["Código", "Producto", "Unidades", "Ventas"], len(VENTAS) + 1)
-        for fila, (codigo, nombre, uds, importe) in enumerate(VENTAS):
-            tabla.setItem(fila, 0, texto(codigo))
-            tabla.setItem(fila, 1, texto(nombre))
-            tabla.setItem(fila, 2, texto(str(uds), derecha=True))
-            tabla.setItem(fila, 3, texto(f"S/ {importe:,.2f}", derecha=True))
-        total = len(VENTAS)
-        tabla.setItem(total, 1, texto("Total del reporte"))
-        tabla.setItem(total, 2, texto(str(unidades), derecha=True))
-        tabla.setItem(total, 3, texto(f"S/ {ventas:,.2f}", derecha=True))
-        return tabla
+        indicadores = QHBoxLayout()
+        indicadores.setSpacing(16)
+        indicadores.addWidget(self._kpi("Total vendido", f"S/ {total:,.2f}"), 1)
+        indicadores.addWidget(self._kpi("Pedidos considerados", str(resumen["pedidos"])), 1)
+        indicadores.addWidget(self._kpi("Unidades vendidas", f"{unidades:g}"), 1)
+        self.zona.addLayout(indicadores)
+
+        tabla = nueva_tabla(["Código", "Producto", "Unidades", "Ventas"], len(filas) + 1)
+        for fila, f in enumerate(filas):
+            tabla.setItem(fila, 0, texto(f["codigo"]))
+            tabla.setItem(fila, 1, texto(f["nombre"]))
+            tabla.setItem(fila, 2, texto(f"{float(f['unidades']):g}", derecha=True))
+            tabla.setItem(fila, 3, texto(f"S/ {float(f['ventas']):,.2f}", derecha=True))
+        n = len(filas)
+        tabla.setItem(n, 1, texto("Total del reporte"))
+        tabla.setItem(n, 2, texto(f"{unidades:g}", derecha=True))
+        tabla.setItem(n, 3, texto(f"S/ {total:,.2f}", derecha=True))
+        self.zona.addWidget(tabla)
+        self.zona.addStretch(1)

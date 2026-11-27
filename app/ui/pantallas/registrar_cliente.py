@@ -128,13 +128,25 @@ class PantallaRegistrarCliente(QWidget):
         )
 
     def _registrar(self) -> None:
-        # Validación de RN-01 y RN-02 en el formulario; la BD también lo valida.
-        if not self.nombre.text().strip():
-            self.nombre.setProperty("error", True)
-            self.nombre.style().unpolish(self.nombre)
-            self.nombre.style().polish(self.nombre)
-            return
+        from app.services import pedidos as svc
+        from app.services.carrito import Cliente, carrito
         self._validar_documento()
-        if self.documento.property("error"):
+        if self.documento.property("error") or not self.nombre.text().strip():
             return
+        try:
+            id_cliente = svc.registrar_cliente(
+                self.tipo.currentText(), self.documento.text(), self.nombre.text(),
+                self.telefono.text(), self.correo.text(), self.direccion.text())
+        except svc.DocumentoDuplicado:
+            self.marcar_documento_duplicado()
+            return
+        except svc.ErrorNegocio as e:
+            self.aviso_duplicado.setText(str(e))
+            self.aviso_duplicado.show()
+            return
+        carrito.seleccionar_cliente(Cliente(
+            id_cliente=id_cliente, tipo_doc=self.tipo.currentText(),
+            nro_doc=self.documento.text().strip(), nombre=self.nombre.text().strip(),
+            telefono=self.telefono.text().strip() or None,
+            direccion=self.direccion.text().strip() or None))
         self.ir_a("Agregar productos")

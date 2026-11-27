@@ -32,3 +32,19 @@ def transaccion():
         raise
     finally:
         conn.close()
+
+
+def consultar(sql: str, params: tuple = ()) -> list[dict]:
+    """Lectura simple: abre, consulta y cierra la conexión. Devuelve filas como diccionarios."""
+    conn = conectar()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(sql, params)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def consultar_uno(sql: str, params: tuple = ()) -> dict | None:
+    filas = consultar(sql, params)
+    return filas[0] if filas else None

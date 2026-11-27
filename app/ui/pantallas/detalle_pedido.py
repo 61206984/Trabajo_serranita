@@ -1,29 +1,18 @@
-"""P09 Detalle del pedido (variantes Pendiente y Confirmado) y P10 Confirmar estado (diálogo).
-Medidas y textos del Figma (1280×800). Los datos son de ejemplo del Figma.
-«Confirmar» solo cambia el estado (heurística 4). La lógica de stock (RN-04 y RN-05) se conectará
-en el módulo de pedidos.
-"""
+"""P09 Detalle del pedido y P10 Confirmar. Confirmar descuenta stock; cancelar lo restituye (RF-12, RF-13)."""
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from app.estilos import tokens as t
+from app.repos import pedidos as repo_pedidos
+from app.services import pedidos as svc
 from app.ui.componentes import basicos as b
-from app.ui.componentes.tablas import celda, nueva_tabla, texto
+from app.ui.componentes.tablas import nueva_tabla, texto
 
-CLIENTE = [("Cliente", "Minimarket El Mantaro S.A.C."), ("Documento", "RUC 20601234567"), ("Teléfono", "964 112 233")]
-
-# (código, producto, cantidad, precio, stock)
-LINEAS = [
-    ("QF-500", "Queso fresco 500 g", 12, 14.50, 120),
-    ("YG-1L", "Yogur frutado 1 litro", 3, 9.80, 3),
-    ("LE-1L", "Leche entera 1 litro", 24, 4.80, 210),
-]
 ESTADOS = ["Pendiente", "Confirmado", "Entregado"]
-STOCK_BAJO = 5
 
 
 class DialogoConfirmarPedido(QDialog):
-    """P10: muestra el stock que se descontará antes de confirmar el pedido."""
+    """P10: muestra el stock que se descontará antes de confirmar."""
 
     def __init__(self, numero: str, lineas, parent=None):
         super().__init__(parent)
@@ -31,43 +20,30 @@ class DialogoConfirmarPedido(QDialog):
         v = QVBoxLayout(self)
         v.setContentsMargins(32, 32, 32, 32)
         v.setSpacing(16)
-
-        cabecera = QHBoxLayout()
-        cabecera.setSpacing(12)
-        icono = QLabel("i")
-        icono.setFixedSize(40, 40)
-        icono.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icono.setStyleSheet(
-            f"background: {t.PRIMARY_SOFT}; color: {t.PRIMARY}; border-radius: 20px; font-weight: 600;")
         titulo = QLabel(f"Confirmar pedido N.º {numero}")
         titulo.setObjectName("subtitulo")
-        cabecera.addWidget(icono)
-        cabecera.addWidget(titulo)
-        cabecera.addStretch(1)
-        v.addLayout(cabecera)
-
-        explicacion = QLabel("Al confirmar, se descontará el siguiente stock. Esta acción no se puede deshacer.")
+        v.addWidget(titulo)
+        explicacion = QLabel("Al confirmar, se descontará el siguiente stock. "
+                             "Si cancela luego, el stock se restituye.")
         explicacion.setObjectName("secundario")
         explicacion.setWordWrap(True)
         v.addWidget(explicacion)
-
-        tabla = nueva_tabla(["Producto", "Cant.", "Stock actual", "Stock luego"], len(lineas))
+        tabla = nueva_tabla(["Producto", "Cant.", "Stock actual", "Stock luego"], max(len(lineas), 1))
         agotados = []
-        for fila, (_, nombre, cant, _, stock) in enumerate(lineas):
+        for fila, l in enumerate(lineas):
+            stock, cant = float(l["stock"]), float(l["cantidad"])
             luego = stock - cant
-            tabla.setItem(fila, 0, texto(nombre))
-            tabla.setItem(fila, 1, texto(str(cant), derecha=True))
-            tabla.setItem(fila, 2, texto(str(stock), derecha=True))
+            tabla.setItem(fila, 0, texto(l["nombre"]))
+            tabla.setItem(fila, 1, texto(f"{cant:g}", derecha=True))
+            tabla.setItem(fila, 2, texto(f"{stock:g}", derecha=True))
             if luego == 0:
                 tabla.setItem(fila, 3, texto("0 (sin stock)", derecha=True, color=t.BADGE["Pendiente"][0]))
-                agotados.append(nombre)
+                agotados.append(l["nombre"])
             else:
-                tabla.setItem(fila, 3, texto(str(luego), derecha=True))
+                tabla.setItem(fila, 3, texto(f"{luego:g}", derecha=True))
         v.addWidget(tabla)
-
         if agotados:
             v.addWidget(b.aviso(f"{', '.join(agotados)} quedará sin stock.", "advertencia"))
-
         acciones = QHBoxLayout()
         acciones.setSpacing(12)
         acciones.addStretch(1)
@@ -80,29 +56,41 @@ class DialogoConfirmarPedido(QDialog):
         v.addLayout(acciones)
 
 
+def _fila(etiqueta: str, valor: str) -> QHBoxLayout:
+    h = QHBoxLayout()
+    izq = QLabel(etiqueta)
+    izq.setObjectName("ayuda")
+    der = QLabel(valor)
+    der.setObjectName("valor")
+    h.addWidget(izq)
+    h.addSpacing(8)
+    h.addWidget(der)
+    return h
+
+
 class PantallaDetallePedido(QWidget):
-    def __init__(self, ir_a, numero: str = "0042", estado: str = "Pendiente", parent=None):
+    def __init__(self, ir_a, pedido_id: int, parent=None):
         super().__init__(parent)
         self.ir_a = ir_a
-        self.numero = numero
-        self.estado = estado
-        total = round(sum(cant * precio for _, _, cant, precio, _ in LINEAS), 2)
+        self.pedido_id = pedido_id
+        cab = repo_pedidos.cabecera(pedido_id)  # None si el pedido no existe
+        self.cab = cab
+        self.lineas = repo_pedidos.detalle(pedido_id)
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
         raiz.addLayout(self._encabezado())
-
         cuerpo = QHBoxLayout()
         cuerpo.setSpacing(24)
         izquierda = QVBoxLayout()
         izquierda.setSpacing(16)
         izquierda.addWidget(self._datos_cliente())
         izquierda.addWidget(self._lineas())
-        izquierda.addLayout(self._total(total))
+        izquierda.addLayout(self._total())
         izquierda.addStretch(1)
         cuerpo.addLayout(izquierda, 1)
-        cuerpo.addWidget(self._estado(), 0, Qt.AlignmentFlag.AlignTop)
+        cuerpo.addWidget(self._panel_estado(), 0, Qt.AlignmentFlag.AlignTop)
         raiz.addLayout(cuerpo, 1)
 
     def _encabezado(self) -> QHBoxLayout:
@@ -110,15 +98,15 @@ class PantallaDetallePedido(QWidget):
         h.setSpacing(16)
         bloque = QVBoxLayout()
         bloque.setSpacing(4)
-        titulo = QLabel(f"Pedido N.º {self.numero}")
+        titulo = QLabel(f"Pedido N.º {self.pedido_id:04d}")
         titulo.setObjectName("titulo")
-        detalle = QLabel("Registrado el 27/11/2026 · Vendedor: Luis Cárdenas")
+        detalle = QLabel(f"Registrado el {self.cab['fecha_pedido']:%d/%m/%Y} · Vendedor: {self.cab['vendedor']}")
         detalle.setObjectName("secundario")
         bloque.addWidget(titulo)
         bloque.addWidget(detalle)
         h.addLayout(bloque)
         h.addStretch(1)
-        h.addWidget(b.insignia(self.estado))
+        h.addWidget(b.insignia(self.cab["estado"]))
         volver = b.boton("Volver a pedidos", "secundario")
         volver.clicked.connect(lambda: self.ir_a("Pedidos"))
         h.addWidget(volver)
@@ -129,7 +117,9 @@ class PantallaDetallePedido(QWidget):
         h = QHBoxLayout(tarjeta)
         h.setContentsMargins(16, 16, 16, 16)
         h.setSpacing(32)
-        for etiqueta, valor in CLIENTE:
+        for etiqueta, valor in [("Cliente", self.cab["cliente"]),
+                                ("Documento", f"{self.cab['tipo_doc']} {self.cab['nro_doc']}"),
+                                ("Teléfono", self.cab["telefono"] or "—")]:
             v = QVBoxLayout()
             v.setSpacing(2)
             lbl = QLabel(etiqueta)
@@ -143,50 +133,49 @@ class PantallaDetallePedido(QWidget):
         return tarjeta
 
     def _lineas(self):
-        tabla = nueva_tabla(["Código", "Producto", "Cant.", "Precio", "Subtotal", "Stock"], len(LINEAS))
-        for fila, (codigo, nombre, cant, precio, stock) in enumerate(LINEAS):
-            color = t.BADGE["Pendiente"][0] if stock <= STOCK_BAJO else None
-            tabla.setItem(fila, 0, texto(codigo))
-            tabla.setItem(fila, 1, texto(nombre))
-            tabla.setItem(fila, 2, texto(str(cant), derecha=True))
-            tabla.setItem(fila, 3, texto(f"S/ {precio:.2f}", derecha=True))
-            tabla.setItem(fila, 4, texto(f"S/ {cant * precio:.2f}", derecha=True))
-            tabla.setItem(fila, 5, texto(str(stock), derecha=True, color=color))
+        tabla = nueva_tabla(["Código", "Producto", "Cant.", "Precio", "Subtotal", "Stock"], max(len(self.lineas), 1))
+        for fila, l in enumerate(self.lineas):
+            stock = float(l["stock"])
+            color = t.BADGE["Pendiente"][0] if stock <= 5 else None
+            tabla.setItem(fila, 0, texto(l["codigo"]))
+            tabla.setItem(fila, 1, texto(l["nombre"]))
+            tabla.setItem(fila, 2, texto(f"{float(l['cantidad']):g}", derecha=True))
+            tabla.setItem(fila, 3, texto(f"S/ {float(l['precio_unitario']):.2f}", derecha=True))
+            tabla.setItem(fila, 4, texto(f"S/ {float(l['subtotal']):.2f}", derecha=True))
+            tabla.setItem(fila, 5, texto(f"{stock:g}", derecha=True, color=color))
         return tabla
 
-    def _total(self, total: float) -> QHBoxLayout:
+    def _total(self) -> QHBoxLayout:
         h = QHBoxLayout()
         h.addStretch(1)
         etiqueta = QLabel("Total")
         etiqueta.setStyleSheet("font-size: 18px; font-weight: 600;")
-        valor = QLabel(f"S/ {total:.2f}")
+        valor = QLabel(f"S/ {float(self.cab['total']):.2f}")
         valor.setStyleSheet("font-size: 18px; font-weight: 600;")
         h.addWidget(etiqueta)
         h.addSpacing(12)
         h.addWidget(valor)
         return h
 
-    def _estado(self) -> QFrame:
+    def _panel_estado(self) -> QFrame:
+        estado = self.cab["estado"]
         tarjeta = b.tarjeta()
         tarjeta.setFixedWidth(320)
         v = QVBoxLayout(tarjeta)
         v.setContentsMargins(20, 20, 20, 20)
         v.setSpacing(16)
-
         titulo = QLabel("Estado del pedido")
         titulo.setStyleSheet("font-size: 18px; font-weight: 600;")
         v.addWidget(titulo)
-
-        actual = ESTADOS.index(self.estado)
+        if estado == "Cancelado":
+            v.addWidget(b.insignia("Cancelado"))
+            v.addWidget(QLabel("Este pedido fue cancelado. No admite más cambios."))
+            return tarjeta
+        actual = ESTADOS.index(estado) if estado in ESTADOS else 0
         for i, nombre in enumerate(ESTADOS):
             fila = QHBoxLayout()
             fila.setSpacing(10)
-            if i < actual:
-                marca, objeto = "✓", "pasoActivo"
-            elif i == actual:
-                marca, objeto = "●", "pasoActivo"
-            else:
-                marca, objeto = "○", "pasoInactivo"
+            marca, objeto = ("✓", "pasoActivo") if i < actual else (("●", "pasoActivo") if i == actual else ("○", "pasoInactivo"))
             m = QLabel(marca)
             m.setObjectName(objeto)
             etiqueta = QLabel(nombre)
@@ -195,28 +184,49 @@ class PantallaDetallePedido(QWidget):
             fila.addWidget(etiqueta)
             fila.addStretch(1)
             v.addLayout(fila)
-
         separador = QFrame()
         separador.setFixedHeight(1)
         separador.setStyleSheet(f"background: {t.BORDER};")
         v.addWidget(separador)
-
-        if self.estado == "Pendiente":
-            confirmar = b.boton("Confirmar pedido", "primario")
-            confirmar.clicked.connect(self._abrir_confirmacion)
+        if estado == "Pendiente":
+            accion = b.boton("Confirmar pedido", "primario")
+            accion.clicked.connect(self._confirmar)
             ayuda_texto = "Al confirmar se descuenta el stock de cada producto."
-        else:
-            confirmar = b.boton("Confirmar entrega", "primario")
+        elif estado == "Confirmado":
+            accion = b.boton("Marcar como entregado", "primario")
+            accion.clicked.connect(self._entregar)
             ayuda_texto = "Si cancela, el stock se restituye."
-        v.addWidget(confirmar)
-        v.addWidget(b.boton("Cancelar pedido", "peligro"))
-
+        else:
+            accion = b.boton("Entregado", "secundario", deshabilitado=True)
+            ayuda_texto = "Pedido entregado: no admite cambios."
+        v.addWidget(accion)
+        if estado in ("Pendiente", "Confirmado"):
+            cancelar = b.boton("Cancelar pedido", "peligro")
+            cancelar.clicked.connect(self._cancelar)
+            v.addWidget(cancelar)
         ayuda = QLabel(ayuda_texto)
         ayuda.setObjectName("ayuda")
         ayuda.setWordWrap(True)
         v.addWidget(ayuda)
         return tarjeta
 
-    def _abrir_confirmacion(self) -> None:
-        if DialogoConfirmarPedido(self.numero, LINEAS, self).exec() == QDialog.DialogCode.Accepted:
-            self.ir_a("Detalle del pedido Confirmado")
+    def _ejecutar(self, accion) -> None:
+        try:
+            accion(self.pedido_id)
+        except svc.ErrorNegocio as e:
+            QMessageBox.warning(self, "No se pudo completar", str(e))
+            return
+        self.ir_a("Detalle del pedido", pedido_id=self.pedido_id)
+
+    def _confirmar(self) -> None:
+        if DialogoConfirmarPedido(f"{self.pedido_id:04d}", self.lineas, self).exec() == QDialog.DialogCode.Accepted:
+            self._ejecutar(svc.confirmar_pedido)
+
+    def _entregar(self) -> None:
+        self._ejecutar(svc.entregar_pedido)
+
+    def _cancelar(self) -> None:
+        r = QMessageBox.question(self, "Cancelar pedido",
+                                 "¿Cancelar este pedido? Esta acción no se puede deshacer.")
+        if r == QMessageBox.StandardButton.Yes:
+            self._ejecutar(svc.cancelar_pedido)
