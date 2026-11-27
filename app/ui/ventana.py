@@ -2,7 +2,7 @@
 
 El inicio es el mismo para los tres roles. Cambia el menú lateral y el nombre de la persona.
 """
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
@@ -28,6 +28,8 @@ def _iniciales(nombre: str) -> str:
 
 
 class VentanaPrincipal(QWidget):
+    cerrar_sesion_solicitada = Signal()
+
     def __init__(self, sesion: auth.SesionActual, parent=None):
         super().__init__(parent)
         self.sesion = sesion
@@ -94,7 +96,7 @@ class VentanaPrincipal(QWidget):
 
         salir = QPushButton("Cerrar sesión")
         salir.setProperty("variante", "secundario")
-        salir.clicked.connect(self.window().cerrar_sesion)
+        salir.clicked.connect(self.cerrar_sesion_solicitada.emit)
         h.addWidget(salir)
         return barra
 

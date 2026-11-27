@@ -26,6 +26,7 @@ class Aplicacion(QMainWindow):
 
     def _al_ingresar(self, sesion: auth.SesionActual) -> None:
         principal = VentanaPrincipal(sesion)
+        principal.cerrar_sesion_solicitada.connect(self.cerrar_sesion)
         self.pila.addWidget(principal)
         self.pila.setCurrentWidget(principal)
 
