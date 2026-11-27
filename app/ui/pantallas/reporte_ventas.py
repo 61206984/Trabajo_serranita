@@ -26,7 +26,7 @@ class PantallaReporteVentas(QWidget):
         ayuda = QLabel("El total del reporte coincide con la suma de los pedidos considerados.")
         ayuda.setObjectName("ayuda")
         raiz.addWidget(ayuda)
-        self.generar()
+        self._mostrar()  # al abrir la pantalla solo se muestra; no se guarda archivo
 
     def _filtros(self) -> QFrame:
         tarjeta = b.tarjeta()
@@ -41,11 +41,8 @@ class PantallaReporteVentas(QWidget):
         h.addStretch(1)
         generar = b.boton("Generar reporte")
         generar.clicked.connect(self.generar)
-        self.descargar = b.boton("Descargar CSV", "secundario", 150)
-        self.descargar.clicked.connect(self._descargar)
         self._datos = None
         h.addWidget(generar, 0, Qt.AlignmentFlag.AlignBottom)
-        h.addWidget(self.descargar, 0, Qt.AlignmentFlag.AlignBottom)
         return tarjeta
 
     def _kpi(self, titulo: str, valor: str) -> QFrame:
@@ -62,6 +59,11 @@ class PantallaReporteVentas(QWidget):
         return tarjeta
 
     def generar(self) -> None:
+        """Botón «Generar reporte»: muestra el reporte y pide dónde guardar el CSV."""
+        if self._mostrar():
+            self._guardar_csv()
+
+    def _mostrar(self) -> bool:
         while self.zona.count():
             it = self.zona.takeAt(0)
             if it.widget():
@@ -74,7 +76,7 @@ class PantallaReporteVentas(QWidget):
         desde, hasta = parse_fecha(self.desde.text()), parse_fecha(self.hasta.text())
         if desde is None or hasta is None or desde > hasta:
             self.zona.addWidget(b.aviso("Ingrese un rango válido en formato dd/mm/aaaa.", "error"))
-            return
+            return False
         self._datos = None
         resumen = reportes.resumen(desde, hasta)
         filas = reportes.ventas_por_producto(desde, hasta)
@@ -101,11 +103,11 @@ class PantallaReporteVentas(QWidget):
         self.zona.addWidget(tabla)
         self.zona.addStretch(1)
         self._datos = (desde, hasta, filas, total, unidades, resumen["pedidos"])
+        return True
 
-    def _descargar(self) -> None:
-        if not self._datos:
-            QMessageBox.information(self, "Reporte", "Primero genere el reporte.")
-            return
+
+    def _guardar_csv(self) -> None:
+        """Al generar el reporte se pregunta dónde guardar el CSV. Cancelar solo omite el archivo."""
         desde, hasta, filas, total, unidades, pedidos = self._datos
         ruta, _ = QFileDialog.getSaveFileName(
             self, "Guardar reporte de ventas",

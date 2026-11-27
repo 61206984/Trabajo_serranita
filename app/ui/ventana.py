@@ -136,7 +136,7 @@ class VentanaPrincipal(QWidget):
         pv.setSpacing(4)
         titulo = QLabel("Datos en este equipo")
         titulo.setObjectName("estadoLocalTitulo")
-        texto = QLabel("Sin conexión a la nube. Respaldo diario a las 06:00.")
+        texto = QLabel("Sin conexión a la nube. Base de datos MySQL en este equipo.")
         texto.setObjectName("estadoLocalTexto")
         texto.setWordWrap(True)
         pv.addWidget(titulo)

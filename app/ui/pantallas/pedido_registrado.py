@@ -8,8 +8,7 @@ PASOS = [("Cliente", "hecho"), ("Productos", "hecho"), ("Resumen", "hecho"), ("R
 
 
 class PantallaPedidoRegistrado(QWidget):
-    def __init__(self, ir_a, numero: str = "0042", cliente: str = "Minimarket El Mantaro S.A.C.",
-                 total: float = 318.60, parent=None):
+    def __init__(self, ir_a, numero: str, cliente: str, total: float, parent=None):
         super().__init__(parent)
         self.ir_a = ir_a
 
