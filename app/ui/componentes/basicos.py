@@ -116,3 +116,18 @@ def tarjeta() -> QFrame:
     f = QFrame()
     f.setObjectName("tarjeta")
     return f
+
+
+def aviso(texto: str, tipo: str = "advertencia") -> QFrame:
+    """Aviso a ancho completo. tipo: error | advertencia | info. Siempre con texto."""
+    nombres = {"error": "avisoError", "advertencia": "avisoAdvertencia", "info": "avisoInfo"}
+    textos = {"error": "avisoErrorTexto", "advertencia": "avisoAdvertenciaTexto", "info": "avisoInfoTexto"}
+    f = QFrame()
+    f.setObjectName(nombres[tipo])
+    h = QHBoxLayout(f)
+    h.setContentsMargins(16, 12, 16, 12)
+    etiqueta = QLabel(texto)
+    etiqueta.setObjectName(textos[tipo])
+    etiqueta.setWordWrap(True)
+    h.addWidget(etiqueta)
+    return f

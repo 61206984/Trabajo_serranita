@@ -28,6 +28,12 @@ class PantallaRegistrarCliente(QWidget):
             "Complete los datos del nuevo cliente. Los campos con * son obligatorios.",
             pasos=PASOS))
 
+        # Aviso de documento duplicado (P04b). Oculto hasta que la base de datos lo informe.
+        self.aviso_duplicado = b.aviso(
+            "Ya existe un cliente con ese documento. Busque al cliente o corrija el número.", "error")
+        self.aviso_duplicado.hide()
+        raiz.addWidget(self.aviso_duplicado)
+
         form = b.tarjeta()
         fv = QVBoxLayout(form)
         fv.setContentsMargins(32, 32, 32, 32)
@@ -85,6 +91,13 @@ class PantallaRegistrarCliente(QWidget):
 
         raiz.addWidget(form)
         raiz.addStretch(1)
+
+    def marcar_documento_duplicado(self) -> None:
+        """Se llama cuando la base de datos informa que el documento ya existe (RN-01)."""
+        self.aviso_duplicado.show()
+        self.documento.setProperty("error", True)
+        self.documento.style().unpolish(self.documento)
+        self.documento.style().polish(self.documento)
 
     def _bloque(self, etiqueta: str, entrada: QWidget, ayuda: QWidget | None = None) -> QVBoxLayout:
         v = QVBoxLayout()

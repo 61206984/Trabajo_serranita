@@ -8,9 +8,12 @@ from PySide6.QtWidgets import (
 )
 
 from app.services import auth
+from app.ui.pantallas.agregar_productos import PantallaAgregarProductos
 from app.ui.pantallas.buscar_cliente import PantallaBuscarCliente
 from app.ui.pantallas.inicio import PantallaInicio
+from app.ui.pantallas.pedido_registrado import PantallaPedidoRegistrado
 from app.ui.pantallas.registrar_cliente import PantallaRegistrarCliente
+from app.ui.pantallas.resumen_pedido import PantallaResumenPedido
 
 # Menú por rol (informe, RF-02). Una opción no permitida no se muestra.
 MENU_POR_ROL = {
@@ -153,6 +156,12 @@ class VentanaPrincipal(QWidget):
             return PantallaBuscarCliente(self._ir_a)
         if nombre == "Registrar cliente":
             return PantallaRegistrarCliente(self._ir_a)
+        if nombre == "Agregar productos":
+            return PantallaAgregarProductos(self._ir_a)
+        if nombre == "Resumen del pedido":
+            return PantallaResumenPedido(self._ir_a)
+        if nombre == "Pedido registrado":
+            return PantallaPedidoRegistrado(self._ir_a)
         marcador = QLabel(f"{nombre} · pendiente de copiar desde Figma")
         marcador.setContentsMargins(32, 32, 32, 32)
         return marcador

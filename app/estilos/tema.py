@@ -37,6 +37,25 @@ def hoja_de_estilos() -> str:
     QFrame#menuLateral {{ background: {t.PRIMARY}; }}
     QFrame#estadoLocal {{ background: rgba(255, 255, 255, 0.12); border-radius: 8px; }}
     QFrame#avisoError {{ background: {t.DANGER_BG}; border-radius: 8px; }}
+    QFrame#avisoAdvertencia {{ background: {t.BADGE["Pendiente"][1]}; border-radius: 8px; }}
+    QLabel#avisoAdvertenciaTexto {{ color: {t.BADGE["Pendiente"][0]}; }}
+    QFrame#avisoInfo {{ background: {t.BADGE["Confirmado"][1]}; border-radius: 8px; }}
+    QLabel#avisoInfoTexto {{ color: {t.BADGE["Confirmado"][0]}; }}
+    QFrame#resumenGris {{ background: {t.BG}; border-radius: 8px; }}
+    QLabel#secundario {{ font-size: 14px; color: {t.TEXT_SECONDARY}; }}
+    QLabel#cuerpo {{ font-size: 16px; color: {t.TEXT_SECONDARY}; }}
+    QLabel#valor {{ font-size: 14px; font-weight: 500; }}
+    QLabel#total {{ font-size: 24px; font-weight: 600; }}
+    QLabel#etiquetaCampo {{ font-weight: 500; }}
+    QLabel#circuloExito {{
+        background: {t.BADGE_OK_BG}; color: {t.BADGE["Entregado"][0]}; border-radius: 36px;
+        font-size: 36px; font-weight: 600;
+    }}
+    QLineEdit#cantidad {{ min-height: 30px; padding: 0 4px; }}
+    QPlainTextEdit {{
+        background: {t.SURFACE}; border: 1px solid {t.BORDER_INPUT}; border-radius: 5px;
+        padding: 8px 12px; color: {t.TEXT};
+    }}
     QLabel#avisoErrorTexto {{ color: {t.DANGER_TEXT}; }}
 
     QTableWidget#tablaDatos {{
