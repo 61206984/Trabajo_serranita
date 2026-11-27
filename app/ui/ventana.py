@@ -169,7 +169,7 @@ class VentanaPrincipal(QWidget):
     def _crear(self, nombre: str, **datos) -> QWidget:
         """Crea la pantalla. Las que aún no están diseñadas en código muestran un marcador."""
         if nombre == "Inicio":
-            return PantallaInicio(self.sesion.nombre)
+            return PantallaInicio(self.sesion.nombre, self._ir_a)
         if nombre == "Nuevo pedido":
             return PantallaBuscarCliente(self._ir_a)
         if nombre == "Registrar cliente":

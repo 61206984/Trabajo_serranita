@@ -1,6 +1,8 @@
 """P14 Reporte de ventas (Gerente, RF-15). Totales desde la base de datos; excluye cancelados."""
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+import csv
+
+from PySide6.QtWidgets import QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QVBoxLayout, QWidget
 from datetime import date
 
 from app.repos import reportes
@@ -39,7 +41,11 @@ class PantallaReporteVentas(QWidget):
         h.addStretch(1)
         generar = b.boton("Generar reporte")
         generar.clicked.connect(self.generar)
+        self.descargar = b.boton("Descargar CSV", "secundario", 150)
+        self.descargar.clicked.connect(self._descargar)
+        self._datos = None
         h.addWidget(generar, 0, Qt.AlignmentFlag.AlignBottom)
+        h.addWidget(self.descargar, 0, Qt.AlignmentFlag.AlignBottom)
         return tarjeta
 
     def _kpi(self, titulo: str, valor: str) -> QFrame:
@@ -69,6 +75,7 @@ class PantallaReporteVentas(QWidget):
         if desde is None or hasta is None or desde > hasta:
             self.zona.addWidget(b.aviso("Ingrese un rango válido en formato dd/mm/aaaa.", "error"))
             return
+        self._datos = None
         resumen = reportes.resumen(desde, hasta)
         filas = reportes.ventas_por_producto(desde, hasta)
         total = float(resumen["total"])
@@ -93,3 +100,29 @@ class PantallaReporteVentas(QWidget):
         tabla.setItem(n, 3, texto(f"S/ {total:,.2f}", derecha=True))
         self.zona.addWidget(tabla)
         self.zona.addStretch(1)
+        self._datos = (desde, hasta, filas, total, unidades, resumen["pedidos"])
+
+    def _descargar(self) -> None:
+        if not self._datos:
+            QMessageBox.information(self, "Reporte", "Primero genere el reporte.")
+            return
+        desde, hasta, filas, total, unidades, pedidos = self._datos
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar reporte de ventas",
+            f"reporte_ventas_{desde:%Y%m%d}_{hasta:%Y%m%d}.csv", "CSV (*.csv)")
+        if not ruta:
+            return
+        if not ruta.lower().endswith(".csv"):
+            ruta += ".csv"
+        # utf-8-sig: Excel en Windows abre las tildes correctamente.
+        with open(ruta, "w", newline="", encoding="utf-8-sig") as f:
+            w = csv.writer(f)
+            w.writerow(["Reporte de ventas Lácteos La Serranita"])
+            w.writerow(["Desde", desde.strftime("%d/%m/%Y"), "Hasta", hasta.strftime("%d/%m/%Y")])
+            w.writerow(["Pedidos considerados (sin cancelados)", pedidos])
+            w.writerow([])
+            w.writerow(["Código", "Producto", "Unidades", "Ventas (S/)"])
+            for f_ in filas:
+                w.writerow([f_["codigo"], f_["nombre"], f"{float(f_['unidades']):g}", f"{float(f_['ventas']):.2f}"])
+            w.writerow(["", "Total del reporte", f"{unidades:g}", f"{total:.2f}"])
+        QMessageBox.information(self, "Reporte guardado", f"Archivo guardado en:\n{ruta}")

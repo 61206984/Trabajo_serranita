@@ -110,3 +110,24 @@ def total_pedido(conn, id_pedido: int):
     cur.execute("SELECT total FROM pedido WHERE id_pedido = %s", (id_pedido,))
     fila = cur.fetchone()
     return fila["total"] if fila else None
+
+
+def contar(estado: str | None = None, hoy: bool = False) -> int:
+    condiciones, params = ["1 = 1"], []
+    if estado:
+        condiciones.append("estado = %s")
+        params.append(estado)
+    if hoy:
+        condiciones.append("DATE(fecha_pedido) = CURDATE()")
+    fila = consultar_uno(f"SELECT COUNT(*) AS n FROM pedido WHERE {' AND '.join(condiciones)}", tuple(params))
+    return int(fila["n"]) if fila else 0
+
+
+def recientes(limite: int = 8) -> list[dict]:
+    return consultar(
+        """SELECT pe.id_pedido, pe.estado, pe.total, c.nombre AS cliente
+             FROM pedido pe JOIN cliente c ON c.id_cliente = pe.id_cliente
+            ORDER BY pe.fecha_pedido DESC, pe.id_pedido DESC
+            LIMIT %s""",
+        (limite,),
+    )

@@ -62,3 +62,10 @@ def ajustar_stock(conn, id_producto: int, delta) -> None:
     """Suma (delta > 0) o resta (delta < 0) stock. El CHECK stock >= 0 de la BD también lo protege."""
     cur = conn.cursor()
     cur.execute("UPDATE producto SET stock = stock + %s WHERE id_producto = %s", (delta, id_producto))
+
+
+def contar_stock_bajo() -> int:
+    fila = consultar_uno(
+        "SELECT COUNT(*) AS n FROM producto WHERE activo = TRUE AND stock > 0 AND stock <= %s",
+        (UMBRAL_STOCK_BAJO,))
+    return int(fila["n"]) if fila else 0
