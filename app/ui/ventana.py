@@ -172,6 +172,8 @@ class VentanaPrincipal(QWidget):
             return PantallaListaPedidos(self._ir_a)
         if nombre == "Detalle del pedido":
             return PantallaDetallePedido(self._ir_a)
+        if nombre == "Detalle del pedido Confirmado":
+            return PantallaDetallePedido(self._ir_a, estado="Confirmado")
         if nombre == "Productos y stock":
             return PantallaProductos(self._ir_a)
         if nombre == "Registrar producto":
