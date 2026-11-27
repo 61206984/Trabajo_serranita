@@ -25,7 +25,12 @@ def iniciar_sesion(username: str, password: str) -> SesionActual:
     datos = usuarios.buscar_por_username(username.strip())
     if datos is None or not datos.activo:
         raise CredencialesInvalidas()
-    if not bcrypt.checkpw(password.encode("utf-8"), datos.password_hash.encode("utf-8")):
+    try:
+        valido = bcrypt.checkpw(password.encode("utf-8"), datos.password_hash.encode("utf-8"))
+    except ValueError:
+        # Hash no válido (p. ej. PENDIENTE si aún no se ejecutó crear_usuarios.py): no hay acceso.
+        valido = False
+    if not valido:
         raise CredencialesInvalidas()
     nombre = datos.nombre_completo or datos.rol
     sesion = SesionActual(datos.username, datos.rol, datos.id_vendedor, nombre)

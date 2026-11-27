@@ -4,10 +4,16 @@ Uso:  python scripts/crear_usuarios.py
 Lee la conexión de .env (DB_HOST, DB_NAME, DB_USER, DB_PASS).
 Las contraseñas de prueba son solo para el prototipo local.
 """
-import bcrypt
-import mysql.connector
+import os
+import sys
 
-from app.config import cargar_config
+# Permite ejecutarlo como `python scripts/crear_usuarios.py` desde cualquier carpeta.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import bcrypt  # noqa: E402
+import mysql.connector  # noqa: E402
+
+from app.config import cargar_config  # noqa: E402
 
 # Contraseñas de prueba (solo prototipo local). Ver README.
 CONTRASENAS = {
