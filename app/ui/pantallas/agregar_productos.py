@@ -77,7 +77,7 @@ class PantallaAgregarProductos(QWidget):
         datos.addWidget(detalle)
         h.addLayout(datos)
         h.addStretch(1)
-        cambiar = b.boton("Cambiar cliente", "secundario", 150)
+        cambiar = b.boton("Cambiar cliente", "secundario", 170, icono="users")
         cambiar.clicked.connect(lambda: self.ir_a("Nuevo pedido"))
         h.addWidget(cambiar)
         return tarjeta

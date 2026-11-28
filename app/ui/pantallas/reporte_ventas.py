@@ -39,7 +39,7 @@ class PantallaReporteVentas(QWidget):
         h.addLayout(b.etiquetado("Desde (dd/mm/aaaa)", self.desde, 180), 0)
         h.addLayout(b.etiquetado("Hasta (dd/mm/aaaa)", self.hasta, 180), 0)
         h.addStretch(1)
-        generar = b.boton("Generar reporte")
+        generar = b.boton("Generar reporte", icono="file-down")
         generar.clicked.connect(self.generar)
         self._datos = None
         h.addWidget(generar, 0, Qt.AlignmentFlag.AlignBottom)

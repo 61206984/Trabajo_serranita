@@ -9,6 +9,7 @@ from app.estilos import tokens as t
 from app.repos import clientes as repo_clientes
 from app.services.carrito import Cliente, carrito
 from app.ui.componentes import basicos as b
+from app.ui.componentes.tablas import ajustar_columnas
 
 PASOS = [("Cliente", "actual"), ("Productos", "pendiente"), ("Resumen", "pendiente"), ("Registrado", "pendiente")]
 
@@ -21,7 +22,7 @@ class PantallaBuscarCliente(QWidget):
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
 
-        nuevo = b.boton("Cliente nuevo", "secundario", 136)
+        nuevo = b.boton("Cliente nuevo", "secundario", 150, icono="user-plus")
         nuevo.clicked.connect(lambda: self.ir_a("Registrar cliente"))
         raiz.addWidget(b.encabezado(
             "Nuevo pedido", "Busque al cliente por número de documento o nombre",
@@ -76,7 +77,7 @@ class PantallaBuscarCliente(QWidget):
         tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         tabla.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         tabla.verticalHeader().setDefaultSectionSize(t.ROW_HEIGHT)
-        tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        ajustar_columnas(tabla, anchos_fijos={3: 120})
         tabla.setFixedHeight(40 + t.ROW_HEIGHT * max(len(filas), 1) + 2)
         for fila, c in enumerate(filas):
             tabla.setItem(fila, 0, QTableWidgetItem(f"{c['tipo_doc']} {c['nro_doc']}"))

@@ -15,7 +15,7 @@ class PantallaClientes(QWidget):
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
-        nuevo = b.boton("Cliente nuevo", "primario")
+        nuevo = b.boton("Cliente nuevo", "primario", icono="user-plus")
         nuevo.clicked.connect(lambda: self.ir_a("Registrar cliente"))
         raiz.addWidget(b.encabezado("Clientes", "Consulte y gestione los clientes", accion=nuevo))
         self.buscar = QLineEdit()
@@ -34,14 +34,14 @@ class PantallaClientes(QWidget):
             it = self.zona.takeAt(0)
             if it.widget():
                 it.widget().deleteLater()
-        tabla = nueva_tabla(["Documento", "Cliente", "Teléfono", "Estado", ""], max(len(filas), 1))
+        tabla = nueva_tabla(["Documento", "Cliente", "Teléfono", "Estado", ""], max(len(filas), 1), anchos_fijos={3: 120})
         for fila, c in enumerate(filas):
             tabla.setItem(fila, 0, texto(f"{c['tipo_doc']} {c['nro_doc']}"))
             tabla.setItem(fila, 1, texto(c["nombre"]))
             tabla.setItem(fila, 2, texto(c["telefono"] or "—"))
             tabla.setCellWidget(fila, 3, celda(b.pildora_activo(bool(c["activo"]))))
             if c["activo"]:
-                baja = b.boton("Dar de baja", "secundario", 123)
+                baja = b.boton("Dar de baja", "secundario", 150, icono="ban")
                 baja.clicked.connect(lambda _=False, c=c: self._dar_de_baja(c))
                 tabla.setCellWidget(fila, 4, celda(baja, derecha=True))
         self.zona.addWidget(tabla)

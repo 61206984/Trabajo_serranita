@@ -1,18 +1,24 @@
 """Componentes reutilizables del Figma (Sistema de diseño). Cada pantalla los usa; ninguna pinta colores propios."""
 from PySide6.QtCore import Qt
+from app.estilos import tokens as t
+from app.ui.componentes import iconos
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget,
 )
 
 
 def boton(texto: str, variante: str = "primario", ancho: int | None = None,
-          deshabilitado: bool = False) -> QPushButton:
-    """Botón de 40 px. variante: primario | secundario | peligro | enlace."""
+          deshabilitado: bool = False, icono: str | None = None) -> QPushButton:
+    """Botón de 40 px. variante: primario | secundario | peligro | enlace. icono: nombre en recursos/iconos."""
     b = QPushButton(texto)
     b.setProperty("variante", variante)
     b.setEnabled(not deshabilitado)
     if ancho:
         b.setFixedWidth(ancho)
+    if icono:
+        color = t.PRIMARY if variante in ("secundario", "enlace") else t.ON_PRIMARY
+        b.setIcon(iconos.icono(icono, color))
+        b.setIconSize(iconos.tamano_icono())
     return b
 
 

@@ -75,6 +75,7 @@ def hoja_de_estilos() -> str:
         background: {t.BG}; color: {t.TEXT_SECONDARY}; border: none;
         border-bottom: 1px solid {t.BORDER}; padding: 0 16px; height: 40px; font-weight: 500;
     }}
+    QTableWidget#tablaDatos QWidget {{ background: transparent; }}
     QTableWidget#tablaDatos::item {{ padding: 0 16px; border-bottom: 1px solid {t.BORDER}; }}
 
     QLineEdit {{
@@ -107,4 +108,16 @@ def hoja_de_estilos() -> str:
     QPushButton[variante="menu"][activo="true"] {{ background: rgba(255, 255, 255, 0.16); }}
     QPushButton:disabled {{ background: {t.BORDER}; color: {t.TEXT_SECONDARY}; }}
     QPushButton:focus {{ border: 2px solid {t.FOCUS}; }}
+
+    QScrollArea {{ background: {t.BG}; border: none; }}
+    QScrollArea > QWidget > QWidget {{ background: {t.BG}; }}
+    QScrollBar:vertical {{ background: transparent; width: 10px; margin: 4px 2px 4px 0; }}
+    QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 0 4px 2px 4px; }}
+    QScrollBar::handle:vertical {{ background: {t.SCROLL_HANDLE}; border-radius: 4px; min-height: 36px; }}
+    QScrollBar::handle:horizontal {{ background: {t.SCROLL_HANDLE}; border-radius: 4px; min-width: 36px; }}
+    QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {{ background: {t.SCROLL_HANDLE_HOVER}; }}
+    QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; border: none; background: none; }}
+    QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
+    QAbstractScrollArea::corner {{ background: transparent; }}
+    QFrame#menuLateral QLabel#marcaIcono {{ background: rgba(255, 255, 255, 0.16); border-radius: 8px; }}
     """

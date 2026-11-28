@@ -16,7 +16,7 @@ class PantallaListaPedidos(QWidget):
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
 
-        nuevo = b.boton("Nuevo pedido", "primario")
+        nuevo = b.boton("Nuevo pedido", "primario", icono="file-plus")
         nuevo.clicked.connect(lambda: self.ir_a("Nuevo pedido"))
         raiz.addWidget(b.encabezado("Pedidos", "Consulte y filtre los pedidos registrados", accion=nuevo))
         raiz.addWidget(self._filtros())
@@ -70,7 +70,7 @@ class PantallaListaPedidos(QWidget):
             it = self.zona_tabla.takeAt(0)
             if it.widget():
                 it.widget().deleteLater()
-        tabla = nueva_tabla(["N.º", "Fecha", "Cliente", "Vendedor", "Estado", "Total"], max(len(filas), 1))
+        tabla = nueva_tabla(["N.º", "Fecha", "Cliente", "Vendedor", "Estado", "Total"], max(len(filas), 1), anchos_fijos={4: 150})
         for fila, p in enumerate(filas):
             enlace = b.boton(f"{p['id_pedido']:04d}", "enlace")
             enlace.clicked.connect(lambda _=False, i=p["id_pedido"]: self.ir_a("Detalle del pedido", pedido_id=i))

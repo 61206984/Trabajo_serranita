@@ -4,10 +4,12 @@ El inicio es el mismo para los tres roles. Cambia el menú lateral y el nombre d
 """
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
+from app.estilos import tokens as t
 from app.services import auth
+from app.ui.componentes import iconos
 from app.services.carrito import carrito
 from app.ui.pantallas.agregar_productos import PantallaAgregarProductos
 from app.ui.pantallas.buscar_cliente import PantallaBuscarCliente
@@ -27,6 +29,12 @@ MENU_POR_ROL = {
     "Vendedor": ["Inicio", "Nuevo pedido", "Clientes", "Pedidos"],
     "Almacenero": ["Inicio", "Productos y stock"],
     "Gerente": ["Inicio", "Pedidos", "Reporte de ventas", "Productos y stock"],
+}
+
+
+ICONOS_MENU = {
+    "Inicio": "home", "Nuevo pedido": "file-plus", "Clientes": "users", "Pedidos": "clipboard-list",
+    "Productos y stock": "package", "Reporte de ventas": "bar-chart",
 }
 
 
@@ -74,6 +82,7 @@ class VentanaPrincipal(QWidget):
 
         marca = QLabel("La Serranita")
         marca.setObjectName("marca")
+        # (la barra superior conserva la marca en texto)
         subtitulo = QLabel("Sistema de pedidos y ventas")
         subtitulo.setObjectName("ayuda")
         bloque = QVBoxLayout()
@@ -106,6 +115,8 @@ class VentanaPrincipal(QWidget):
         h.addLayout(usuario)
 
         salir = QPushButton("Cerrar sesión")
+        salir.setIcon(iconos.icono("log-out", t.PRIMARY))
+        salir.setIconSize(iconos.tamano_icono())
         salir.setProperty("variante", "secundario")
         salir.clicked.connect(self.cerrar_sesion_solicitada.emit)
         h.addWidget(salir)
@@ -122,6 +133,8 @@ class VentanaPrincipal(QWidget):
         self._botones_menu = {}
         for opcion in MENU_POR_ROL.get(self.sesion.rol, ["Inicio"]):
             b = QPushButton(opcion)
+            b.setIcon(iconos.icono(ICONOS_MENU.get(opcion, "circle-check"), t.ON_PRIMARY))
+            b.setIconSize(iconos.tamano_icono())
             b.setProperty("variante", "menu")
             b.setProperty("activo", False)
             b.clicked.connect(lambda _=False, o=opcion: self._ir_a(o))
@@ -159,12 +172,17 @@ class VentanaPrincipal(QWidget):
             b.style().unpolish(b)
             b.style().polish(b)
         nueva = self._crear(opcion, **datos)
+        # Cada pantalla va dentro de un área con desplazamiento: nada se corta en ventanas pequeñas.
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        area.setWidget(nueva)
         while self.contenido.count():
             vieja = self.contenido.widget(0)
             self.contenido.removeWidget(vieja)
             vieja.deleteLater()
-        self.contenido.addWidget(nueva)
-        self.contenido.setCurrentWidget(nueva)
+        self.contenido.addWidget(area)
+        self.contenido.setCurrentWidget(area)
 
     def _crear(self, nombre: str, **datos) -> QWidget:
         """Crea la pantalla. Las que aún no están diseñadas en código muestran un marcador."""

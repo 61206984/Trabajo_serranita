@@ -11,6 +11,7 @@ from app.estilos import tokens as t
 from app.repos import pedidos as repo_pedidos
 from app.repos import productos as repo_productos
 from app.ui.componentes import basicos as b
+from app.ui.componentes.tablas import ajustar_columnas
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
          "agosto", "setiembre", "octubre", "noviembre", "diciembre"]
@@ -51,7 +52,7 @@ class PantallaInicio(QWidget):
         titulos.addWidget(h2)
         enc.addLayout(titulos)
         enc.addStretch(1)
-        nuevo = b.boton("Nuevo pedido", "primario", 134)
+        nuevo = b.boton("Nuevo pedido", "primario", 150, icono="file-plus")
         nuevo.clicked.connect(lambda: self.ir_a("Nuevo pedido"))
         enc.addWidget(nuevo)
         raiz.addLayout(enc)
@@ -99,7 +100,7 @@ class PantallaInicio(QWidget):
         tabla.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         tabla.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         tabla.verticalHeader().setDefaultSectionSize(t.ROW_HEIGHT)
-        tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        ajustar_columnas(tabla, anchos_fijos={2: 150})
         tabla.setFixedHeight(40 + t.ROW_HEIGHT * max(len(filas), 1) + 2)
         for fila, p in enumerate(filas):
             tabla.setItem(fila, 0, QTableWidgetItem(f"{p['id_pedido']:04d}"))

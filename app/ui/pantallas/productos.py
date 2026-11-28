@@ -77,7 +77,7 @@ class PantallaProductos(QWidget):
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(32, 32, 32, 32)
         raiz.setSpacing(24)
-        registrar = b.boton("Registrar producto", "primario")
+        registrar = b.boton("Registrar producto", "primario", icono="plus")
         registrar.clicked.connect(lambda: self.ir_a("Registrar producto"))
         raiz.addWidget(b.encabezado(
             "Productos y stock", "Consulte el catálogo, registre productos y ingrese mercadería",
@@ -116,7 +116,7 @@ class PantallaProductos(QWidget):
             if it.widget():
                 it.widget().deleteLater()
         tabla = nueva_tabla(["Código", "Producto", "Categoría", "Unidad", "Precio", "Stock", "Estado", ""],
-                            max(len(filas), 1))
+                            max(len(filas), 1), anchos_fijos={0: 100, 2: 110, 3: 90, 4: 100, 5: 80, 6: 130})
         for fila, p in enumerate(filas):
             tabla.setItem(fila, 0, texto(p["codigo"]))
             tabla.setItem(fila, 1, texto(p["nombre"]))
@@ -125,7 +125,7 @@ class PantallaProductos(QWidget):
             tabla.setItem(fila, 4, texto(f"S/ {float(p['precio_unit']):.2f}", derecha=True))
             tabla.setItem(fila, 5, texto(f"{float(p['stock']):g}", derecha=True))
             tabla.setCellWidget(fila, 6, celda(b.estado_stock(int(float(p["stock"])))))
-            ingresar = b.boton("Ingresar stock", "secundario", 130)
+            ingresar = b.boton("Ingresar stock", "secundario", 150, icono="package-plus")
             ingresar.clicked.connect(lambda _=False, p=p: self._ingresar(p))
             tabla.setCellWidget(fila, 7, celda(ingresar, derecha=True))
         self.zona_tabla.addWidget(tabla)
